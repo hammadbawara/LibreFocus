@@ -172,6 +172,17 @@ class UsageTrackingRepository(
     }
 
     /**
+     * Retrieves raw hourly usage entries for a specific time range to allow custom aggregation
+     * such as building a heatmap.
+     */
+    suspend fun getRawUsageInTimeRange(
+        startUtc: Long,
+        endUtc: Long
+    ): List<HourlyAppUsageEntity> = withContext(Dispatchers.IO) {
+        hourlyAppUsageDao.getUsageInTimeRangeOnce(startUtc, endUtc)
+    }
+
+    /**
      * Retrieves daily unlock summaries for the provided UTC range (inclusive of start day, exclusive of end day).
      */
     suspend fun getDailyUnlockSummary(startUtc: Long, endUtc: Long): List<DailyDeviceUsageEntity> {
