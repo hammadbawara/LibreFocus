@@ -78,37 +78,6 @@ fun HomeScreen(
                 )
             }
 
-//            if (state.apps.isNotEmpty()) {
-//                item {
-//                    Text(
-//                        text = "Today's Apps",
-//                        style = MaterialTheme.typography.titleMedium,
-//                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-//                    )
-//                }
-//
-//                items(state.apps) { appUsage ->
-//                    ListItem(
-//                        headlineContent = { Text(appUsage.appName) },
-//                        supportingContent = {
-//                            Text(
-//                                "Usage: ${formatHomeDuration(appUsage.usageTimeMillis)}"
-//                            )
-//                        }
-//                    )
-//                }
-//            }
         }
-    }
-}
-
-private fun formatHomeDuration(millis: Long): String {
-    val totalMinutes = millis / (1000 * 60)
-    val hours = totalMinutes / 60
-    val minutes = totalMinutes % 60
-    return if (hours > 0) {
-        "${hours}h ${minutes}m"
-    } else {
-        "${minutes}m"
     }
 }
