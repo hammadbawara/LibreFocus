@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
             LibreFocusTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
-                        name = "Android",
+                        name = "LibreFocus",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
