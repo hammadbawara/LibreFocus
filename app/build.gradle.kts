@@ -72,7 +72,15 @@ dependencies {
     // Room Database
     implementation(libs.androidx.room.runtime)
 
+    // Work Manager
     implementation(libs.androidx.work.runtime.ktx)
+
+    // Ktor - for network requests
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.logging)
 
 
 }
