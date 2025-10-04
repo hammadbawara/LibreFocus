@@ -12,7 +12,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:name=".LibreFocusApp"
+        android:name=".LibreFocus"
         android:theme="@style/Theme.LibreFocus">
         <activity
             android:name=".MainActivity"
