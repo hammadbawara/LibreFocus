@@ -22,10 +22,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Keep the splash screen showing until preferences are loaded
         val splashScreen = installSplashScreen()
+        // Keep the splash screen showing until everything loaded
         splashScreen.setKeepOnScreenCondition {
-            true
+            false
         }
 
         setContent {
