@@ -1,5 +1,6 @@
 [versions]
 agp = "8.12.3"
+datastorePreferences = "1.1.7"
 kotlin = "2.2.10"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -59,6 +60,9 @@ androidx-navigation-testing = { module = "androidx.navigation:navigation-testing
 
 # Kotlinx Serialization
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+
+# DataStore Preferences
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

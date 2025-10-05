@@ -4,8 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.librefocus.ui.onboarding.AppIntroScreen
-import com.librefocus.ui.onboarding.OnboardingNavGraph
 
 @Composable
 fun HomeNavGraph() {
@@ -13,12 +11,10 @@ fun HomeNavGraph() {
 
     NavHost(
         navController = navController,
-        startDestination = "home"
+        startDestination = "home_screen"
     ) {
-        composable("home") {
-            OnboardingNavGraph {
-
-            }
+        composable("home_screen") {
+            HomeScreen()
         }
     }
 }
