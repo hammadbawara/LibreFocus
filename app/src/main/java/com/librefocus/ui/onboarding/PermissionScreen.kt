@@ -1,12 +1,15 @@
 package com.librefocus.ui.onboarding
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.PowerManager
 import android.provider.Settings
+import android.content.pm.PackageManager
+import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
 
@@ -33,6 +37,9 @@ fun PermissionScreen(
 
     // State to keep track of last requested permission
     var lastRequestedPermission by remember { mutableStateOf<String?>(null) }
+
+    // Track whether we've performed the initial status check
+    var initialCheckDone by remember { mutableStateOf(false) }
 
     // Permission launcher for standard permissions
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -50,7 +57,8 @@ fun PermissionScreen(
             }
         }
     )
-    // Launcher for Usage Access
+
+    // Launcher for Usage Access and other settings flows (we can reuse StartActivityForResult)
     val usageAccessLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
         onResult = {
@@ -58,6 +66,19 @@ fun PermissionScreen(
             viewModel.updatePermissionStatus("android.permission.PACKAGE_USAGE_STATS", granted)
             if (!granted) {
                 viewModel.onPermissionDeniedPermanently("android.permission.PACKAGE_USAGE_STATS")
+            }
+        }
+    )
+
+    // Launcher for battery optimization settings
+    val batteryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+        onResult = {
+            val pm = context.getSystemService(PowerManager::class.java)
+            val granted = pm?.isIgnoringBatteryOptimizations(context.packageName) == true
+            viewModel.updatePermissionStatus(Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, granted)
+            if (!granted) {
+                viewModel.onPermissionDeniedPermanently(Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
             }
         }
     )
@@ -87,8 +108,34 @@ fun PermissionScreen(
                     appInfoLauncher.launch(intent)
                 }
 
-                PermissionEvent.RequestIgnoreBatteryOptimization -> TODO()
+                PermissionEvent.RequestIgnoreBatteryOptimization -> {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:" + context.packageName)
+                    }
+                    batteryLauncher.launch(intent)
+                }
             }
+        }
+    }
+
+    // Initial permission status check - run once when UIState is available
+    LaunchedEffect(uiState.permissions) {
+        if (!initialCheckDone && uiState.permissions.isNotEmpty()) {
+            uiState.permissions.forEach { item ->
+                val granted = when (item.permission) {
+                    "android.permission.PACKAGE_USAGE_STATS" -> viewModel.checkUsageAccessGranted(context)
+                    Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS -> {
+                        val pm = context.getSystemService(PowerManager::class.java)
+                        pm?.isIgnoringBatteryOptimizations(context.packageName) == true
+                    }
+                    else -> {
+                        // runtime permission check (covers POST_NOTIFICATIONS on Android 13+ and others)
+                        ContextCompat.checkSelfPermission(context, item.permission) == PackageManager.PERMISSION_GRANTED
+                    }
+                }
+                viewModel.updatePermissionStatus(item.permission, granted)
+            }
+            initialCheckDone = true
         }
     }
 
@@ -114,15 +161,8 @@ fun PermissionScreen(
         ) {
             items(uiState.permissions) { item ->
                 PermissionItemRow(
-                    item,
-                    onPermissionToggled = { granted ->
-                        if (granted) {
-                            viewModel.onPermissionRequestClicked(item.permission)
-                        } else {
-                            // If user unchecks, mark as not granted
-                            viewModel.updatePermissionStatus(item.permission, false)
-                        }
-                    }
+                    item = item,
+                    onRequest = { viewModel.onPermissionRequestClicked(item.permission) }
                 )
             }
         }
@@ -142,12 +182,16 @@ fun PermissionScreen(
 @Composable
 private fun PermissionItemRow(
     item: PermissionItem,
-    onPermissionToggled: (Boolean) -> Unit
+    onRequest: () -> Unit
 ) {
+    val containerColor = if (item.isGranted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .clickable { onRequest() },
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
@@ -172,7 +216,7 @@ private fun PermissionItemRow(
             }
             Checkbox(
                 checked = item.isGranted,
-                onCheckedChange = { onPermissionToggled(it) }
+                onCheckedChange = {onRequest()},
             )
         }
     }
