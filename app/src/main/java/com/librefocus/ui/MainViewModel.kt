@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.librefocus.data.local.datastore.PreferencesRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -13,7 +14,7 @@ class MainViewModel(
 ) : ViewModel() {
 
     val onboardingShown: StateFlow<Boolean> = repository.onboardingShown
-        .stateIn(viewModelScope, SharingStarted.Companion.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.Companion.Eagerly, true)
 
     fun setOnboardingShown(shown: Boolean) {
         viewModelScope.launch {
