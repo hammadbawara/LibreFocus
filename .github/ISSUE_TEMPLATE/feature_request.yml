@@ -1,0 +1,44 @@
+name: "🌱 Feature Request"
+description: Suggest a new feature or improvement for LibreFocus
+labels: ["enhancement"]
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe your idea below.
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Short summary of the feature.
+      placeholder: Add a daily motivational quote feature
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem this solves
+      description: Why do we need this? What user problem does it solve?
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed implementation or flow.
+  - type: textarea
+    id: ui
+    attributes:
+      label: UI/UX Notes
+      description: Describe UI layout or attach mockups if available.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low
+        - Medium
+        - High
+        - Urgent
+  - type: input
+    id: milestone
+    attributes:
+      label: Target Milestone
+      placeholder: e.g. October 2025 Sprint
