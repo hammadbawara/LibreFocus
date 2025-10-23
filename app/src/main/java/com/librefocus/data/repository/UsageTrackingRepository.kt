@@ -81,7 +81,7 @@ class UsageTrackingRepository(
     private fun aggregateUsageByHour(
         events: List<com.librefocus.models.UsageEventData>
     ): Map<Pair<String, Long>, Pair<Long, Int>> {
-        val hourlyUsageMap = mutableMapOf<Pair<String, Long>, Pair<Long, Int>>()
+        val hourlyUsageMap = mutableMapOf<Pair<String, Long>, Long>()
         val activeSessionsMap = mutableMapOf<String, Long>()
         val launchCountMap = mutableMapOf<Pair<String, Long>, Int>()
         
