@@ -1,6 +1,7 @@
 package com.librefocus
 
 import android.app.Application
+import com.librefocus.di.databaseModule
 import com.librefocus.di.dataStoreModule
 import com.librefocus.di.homeModule
 import com.librefocus.di.mainModule
@@ -15,7 +16,13 @@ class LibreFocus: Application() {
         // Initializing Koin for dependency injection
         startKoin {
             androidContext(this@LibreFocus)
-            modules(onboardingModule, dataStoreModule, mainModule, homeModule)
+            modules(
+                onboardingModule,
+                dataStoreModule,
+                mainModule,
+                homeModule,
+                databaseModule
+            )
         }
     }
 }
