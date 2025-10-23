@@ -13,9 +13,10 @@ import androidx.navigation.compose.rememberNavController
 import com.librefocus.ui.home.HomeNavGraph
 import com.librefocus.ui.onboarding.OnboardingNavGraph
 import com.librefocus.ui.theme.LibreFocusTheme
+import com.librefocus.utils.UsageSyncScheduler
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
-class MainActivity : ComponentActivity() {
+class MainActivity() : ComponentActivity() {
     private val viewModel: MainViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +28,9 @@ class MainActivity : ComponentActivity() {
         splashScreen.setKeepOnScreenCondition {
             false
         }
+
+        // Schedule periodic usage sync when app starts
+        UsageSyncScheduler.schedulePeriodicSync(this)
 
         setContent {
             LibreFocusTheme {

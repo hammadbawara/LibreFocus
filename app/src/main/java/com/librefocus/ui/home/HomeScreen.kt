@@ -11,11 +11,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import com.librefocus.models.AppUsage
+import java.util.function.IntConsumer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,17 +28,51 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Today’s Usage") })
+            TopAppBar(
+                title = { Text("Today's Usage") },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.syncUsageStats(forceFullSync = false) },
+                        enabled = !state.isSyncing
+                    ) {
+                        if (state.isSyncing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(id = com.librefocus.R.drawable.baseline_sync_24),
+                                contentDescription = "Sync Usage Data"
+                            )
+                        }
+                    }
+                }
+            )
         }
     ) { padding ->
         when {
             state.isLoading -> Box(Modifier.fillMaxSize().padding(padding)) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center))
             }
-            state.error != null -> Text(
-                text = "Error: ${state.error}",
-                modifier = Modifier.padding(16.dp)
-            )
+            state.error != null -> Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Error: ${state.error}",
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { viewModel.loadAppUsage() }) {
+                    Text("Retry")
+                }
+            }
             else -> AppUsageList(
                 apps = state.apps,
                 modifier = Modifier.padding(padding)

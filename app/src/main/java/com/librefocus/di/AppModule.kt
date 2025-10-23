@@ -20,11 +20,6 @@ val mainModule = module {
 }
 
 val homeModule = module {
-    single {
-        androidContext().getSystemService(UsageStatsManager::class.java)
-    }
-
-    single { UsageRepository(get(), get()) }
-
+    // HomeViewModel now uses UsageTrackingRepository from databaseModule
     viewModelOf(::HomeViewModel)
 }
