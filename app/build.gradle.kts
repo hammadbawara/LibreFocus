@@ -68,6 +68,7 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger.slf4j)
+    implementation(libs.koin.androidx.workmanager)
 
     // Room Database
     implementation(libs.androidx.room.runtime)
