@@ -2,8 +2,14 @@ package com.librefocus.data.repository
 
 import android.app.usage.UsageEvents
 import android.util.Log
-import com.librefocus.data.local.database.dao.*
-import com.librefocus.data.local.database.entity.*
+import com.librefocus.data.local.database.dao.AppCategoryDao
+import com.librefocus.data.local.database.dao.AppDao
+import com.librefocus.data.local.database.dao.HourlyAppUsageDao
+import com.librefocus.data.local.database.dao.SyncMetadataDao
+import com.librefocus.data.local.database.entity.AppCategoryEntity
+import com.librefocus.data.local.database.entity.AppEntity
+import com.librefocus.data.local.database.entity.HourlyAppUsageEntity
+import com.librefocus.data.local.database.entity.SyncMetadataEntity
 import com.librefocus.data.local.datasource.UsageStatsDataSource
 import com.librefocus.models.AppUsageData
 import com.librefocus.models.HourlyUsageData

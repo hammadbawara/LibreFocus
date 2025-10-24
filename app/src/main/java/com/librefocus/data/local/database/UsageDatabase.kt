@@ -2,8 +2,14 @@ package com.librefocus.data.local.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import com.librefocus.data.local.database.dao.*
-import com.librefocus.data.local.database.entity.*
+import com.librefocus.data.local.database.dao.AppCategoryDao
+import com.librefocus.data.local.database.dao.AppDao
+import com.librefocus.data.local.database.dao.HourlyAppUsageDao
+import com.librefocus.data.local.database.dao.SyncMetadataDao
+import com.librefocus.data.local.database.entity.AppCategoryEntity
+import com.librefocus.data.local.database.entity.AppEntity
+import com.librefocus.data.local.database.entity.HourlyAppUsageEntity
+import com.librefocus.data.local.database.entity.SyncMetadataEntity
 
 /**
  * Main Room database for LibreFocus app.

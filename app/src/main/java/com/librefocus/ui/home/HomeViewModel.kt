@@ -4,11 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.librefocus.data.repository.UsageTrackingRepository
 import com.librefocus.models.AppUsage
-import com.librefocus.models.AppUsageData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.util.*
+import java.util.Calendar
 
 data class HomeUiState(
     val apps: List<AppUsage> = emptyList(),
