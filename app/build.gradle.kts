@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.librefocus"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -97,6 +97,9 @@ dependencies {
 
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)
+
+    // Compose Charts
+    implementation (libs.compose.charts)
 
 
 }

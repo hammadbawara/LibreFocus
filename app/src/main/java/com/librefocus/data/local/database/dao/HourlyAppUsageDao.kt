@@ -35,6 +35,12 @@ interface HourlyAppUsageDao {
         startUtc: Long,
         endUtc: Long
     ): Flow<List<HourlyAppUsageEntity>>
+
+    @Query("""
+        SELECT * FROM hourly_app_usage
+        WHERE hourStartUtc >= :startUtc AND hourStartUtc < :endUtc
+    """)
+    suspend fun getUsageInTimeRangeOnce(startUtc: Long, endUtc: Long): List<HourlyAppUsageEntity>
     
     @Query("""
         SELECT * FROM hourly_app_usage 

@@ -4,20 +4,29 @@ import android.app.usage.UsageEvents
 import android.util.Log
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
+import com.librefocus.data.local.database.dao.DailyDeviceUsageDao
 import com.librefocus.data.local.database.dao.HourlyAppUsageDao
 import com.librefocus.data.local.database.dao.SyncMetadataDao
 import com.librefocus.data.local.database.entity.AppCategoryEntity
 import com.librefocus.data.local.database.entity.AppEntity
+import com.librefocus.data.local.database.entity.DailyDeviceUsageEntity
 import com.librefocus.data.local.database.entity.HourlyAppUsageEntity
 import com.librefocus.data.local.database.entity.SyncMetadataEntity
 import com.librefocus.data.local.datasource.UsageStatsDataSource
+import com.librefocus.models.AppUsageAverages
 import com.librefocus.models.AppUsageData
 import com.librefocus.models.HourlyUsageData
+import com.librefocus.utils.extractUtcHourOfDay
+import com.librefocus.utils.roundToDayStart
+import com.librefocus.utils.roundToHourStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.time.YearMonth
+import java.time.ZoneOffset
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 /**
  * Repository for managing app usage tracking.
@@ -28,6 +37,7 @@ class UsageTrackingRepository(
     private val appCategoryDao: AppCategoryDao,
     private val appDao: AppDao,
     private val hourlyAppUsageDao: HourlyAppUsageDao,
+    private val dailyDeviceUsageDao: DailyDeviceUsageDao,
     private val syncMetadataDao: SyncMetadataDao
 ) {
     
@@ -63,9 +73,13 @@ class UsageTrackingRepository(
             
             // Process events and aggregate by hour
             val hourlyUsageMap = aggregateUsageByHour(events)
+
+            // Aggregate unlock information by day/hour
+            val dailyUnlockMap = aggregateDailyUnlocks(events)
             
             // Save aggregated data to database
             saveHourlyUsageData(hourlyUsageMap)
+            saveDailyUnlockData(dailyUnlockMap, endTimeUtc)
             
             // Update last sync time
             updateLastSyncTime(endTimeUtc)
@@ -93,7 +107,7 @@ class UsageTrackingRepository(
         
         events.sortedBy { it.timestampUtc }.forEach { event ->
             val packageName = event.packageName
-            val hourStartUtc = roundDownToHour(event.timestampUtc)
+            val hourStartUtc = roundToHourStart(event.timestampUtc)
             val key = packageName to hourStartUtc
             
             when (event.eventType) {
@@ -163,8 +177,8 @@ class UsageTrackingRepository(
         endUtc: Long,
         hourlyUsageMap: MutableMap<Pair<String, Long>, Long>
     ) {
-        var currentHourStart = roundDownToHour(startUtc)
-        val endHourStart = roundDownToHour(endUtc)
+    var currentHourStart = roundToHourStart(startUtc)
+    val endHourStart = roundToHourStart(endUtc)
         
         while (currentHourStart <= endHourStart) {
             val hourEnd = currentHourStart + TimeUnit.HOURS.toMillis(1)
@@ -179,6 +193,27 @@ class UsageTrackingRepository(
             
             currentHourStart = hourEnd
         }
+    }
+
+    /**
+     * Aggregates KEYGUARD unlock events into hourly buckets per day.
+     */
+    private fun aggregateDailyUnlocks(
+        events: List<com.librefocus.models.UsageEventData>
+    ): Map<Long, Map<Int, Int>> {
+        if (events.isEmpty()) return emptyMap()
+
+        val dailyUnlocks = mutableMapOf<Long, MutableMap<Int, Int>>()
+        events.forEach { event ->
+            if (event.eventType == UsageEvents.Event.KEYGUARD_HIDDEN) {
+                val dayStart = roundToDayStart(event.timestampUtc)
+                val hour = extractUtcHourOfDay(event.timestampUtc).coerceIn(0, 23)
+                val hourMap = dailyUnlocks.getOrPut(dayStart) { mutableMapOf() }
+                hourMap[hour] = (hourMap[hour] ?: 0) + 1
+            }
+        }
+
+        return dailyUnlocks.mapValues { entry -> entry.value.toSortedMap() }
     }
     
     /**
@@ -234,12 +269,38 @@ class UsageTrackingRepository(
             }
         }
     }
-    
+
     /**
-     * Rounds a timestamp down to the start of the hour.
+     * Persists aggregated daily unlock information while avoiding unnecessary rewrites.
      */
-    private fun roundDownToHour(timestampUtc: Long): Long {
-        return (timestampUtc / TimeUnit.HOURS.toMillis(1)) * TimeUnit.HOURS.toMillis(1)
+    private suspend fun saveDailyUnlockData(
+        dailyUnlockMap: Map<Long, Map<Int, Int>>,
+        syncCompletionUtc: Long
+    ) {
+        if (dailyUnlockMap.isEmpty()) return
+
+        val currentDayStart = roundToDayStart(syncCompletionUtc)
+        val now = System.currentTimeMillis()
+
+        dailyUnlockMap.forEach { (dayStartUtc, hourlyUnlocks) ->
+            if (hourlyUnlocks.isEmpty()) return@forEach
+
+            val existing = dailyDeviceUsageDao.getUsageForDate(dayStartUtc)
+            if (existing != null && dayStartUtc < currentDayStart) {
+                // Historical day already stored; skip to avoid double counting.
+                return@forEach
+            }
+
+            val sortedUnlocks = hourlyUnlocks.toSortedMap()
+            val entity = DailyDeviceUsageEntity(
+                id = existing?.id ?: 0,
+                dateUtc = dayStartUtc,
+                hourlyUnlocks = sortedUnlocks,
+                totalUnlocks = sortedUnlocks.values.sum(),
+                lastUpdatedUtc = now
+            )
+            dailyDeviceUsageDao.insertOrUpdateDailyUsage(entity)
+        }
     }
     
     /**
@@ -299,6 +360,23 @@ class UsageTrackingRepository(
             }
         }
     }
+
+    /**
+     * Returns a map of hour (0-23) to unlock count for the provided day (UTC midnight).
+     */
+    suspend fun getHourlyUnlocksForDay(dateUtc: Long): Map<Int, Int> {
+        val dayStart = roundToDayStart(dateUtc)
+        return dailyDeviceUsageDao.getUsageForDate(dayStart)?.hourlyUnlocks ?: emptyMap()
+    }
+
+    /**
+     * Retrieves daily unlock summaries for the provided UTC range (inclusive of start day, exclusive of end day).
+     */
+    suspend fun getDailyUnlockSummary(startUtc: Long, endUtc: Long): List<DailyDeviceUsageEntity> {
+        val rangeStart = roundToDayStart(startUtc)
+        val rangeEndExclusive = roundToDayStart(endUtc) + TimeUnit.DAYS.toMillis(1)
+        return dailyDeviceUsageDao.getUsageForDayRange(rangeStart, rangeEndExclusive)
+    }
     
     /**
      * Retrieves total usage for all apps in a time range.
@@ -315,18 +393,15 @@ class UsageTrackingRepository(
         endUtc: Long
     ): List<AppUsageData> = withContext(Dispatchers.IO) {
         val usageMap = mutableMapOf<Int, Pair<Long, Int>>()
-        
-        hourlyAppUsageDao.getUsageInTimeRange(startUtc, endUtc)
-            .map { usages ->
-                usages.forEach { usage ->
-                    val current = usageMap[usage.appId] ?: (0L to 0)
-                    usageMap[usage.appId] = (
-                        current.first + usage.usageDurationMillis to
-                        current.second + usage.launchCount
-                    )
-                }
-            }
-        
+        val usages = hourlyAppUsageDao.getUsageInTimeRangeOnce(startUtc, endUtc)
+        usages.forEach { usage ->
+            val current = usageMap[usage.appId] ?: (0L to 0)
+            usageMap[usage.appId] = (
+                current.first + usage.usageDurationMillis to
+                current.second + usage.launchCount
+            )
+        }
+
         usageMap.mapNotNull { (appId, data) ->
             val app = appDao.getAppById(appId)
             app?.let {
@@ -345,5 +420,46 @@ class UsageTrackingRepository(
      */
     suspend fun cleanupOldUsageData(beforeUtc: Long): Int {
         return hourlyAppUsageDao.deleteUsagesBefore(beforeUtc)
+    }
+
+    /**
+     * Calculates average app usage (duration and launch count) for the given month.
+     * Month is 1-based (January = 1).
+     */
+    suspend fun getAverageAppUsageForMonth(year: Int, month: Int): AppUsageAverages = withContext(Dispatchers.IO) {
+        val yearMonth = YearMonth.of(year, month)
+        val startUtc = yearMonth.atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+        val endUtc = yearMonth.plusMonths(1).atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+
+        val totalUsage = hourlyAppUsageDao.getUsageInTimeRangeOnce(startUtc, endUtc)
+        if (totalUsage.isEmpty()) {
+            return@withContext AppUsageAverages(averageUsageMillis = 0L, averageLaunchCount = 0)
+        }
+
+        val totalDuration = totalUsage.sumOf { it.usageDurationMillis }
+        val totalLaunches = totalUsage.sumOf { it.launchCount }
+
+        // Calculate averages per day of data available in the month
+        val daysInMonth = yearMonth.lengthOfMonth()
+        AppUsageAverages(
+            averageUsageMillis = totalDuration / daysInMonth,
+            averageLaunchCount = (totalLaunches.toDouble() / daysInMonth).roundToInt()
+        )
+    }
+
+    /**
+     * Calculates average unlock count for the given month based on stored daily usage entities.
+     */
+    suspend fun getAverageUnlocksForMonth(year: Int, month: Int): Int = withContext(Dispatchers.IO) {
+        val yearMonth = YearMonth.of(year, month)
+        val startUtc = yearMonth.atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+        val endUtc = yearMonth.plusMonths(1).atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+
+        val dailyUsage = dailyDeviceUsageDao.getUsageForDayRange(startUtc, endUtc)
+        if (dailyUsage.isEmpty()) return@withContext 0
+
+        val totalUnlocks = dailyUsage.sumOf { it.totalUnlocks }
+        val daysInMonth = yearMonth.lengthOfMonth()
+        (totalUnlocks.toDouble() / daysInMonth).roundToInt()
     }
 }

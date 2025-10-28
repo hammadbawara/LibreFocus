@@ -20,7 +20,7 @@ val databaseModule = module {
             UsageDatabase::class.java,
             UsageDatabase.DATABASE_NAME
         )
-            .fallbackToDestructiveMigration(false)
+            .fallbackToDestructiveMigration()
             .build()
     }
     
@@ -29,6 +29,7 @@ val databaseModule = module {
     single { get<UsageDatabase>().appDao() }
     single { get<UsageDatabase>().hourlyAppUsageDao() }
     single { get<UsageDatabase>().syncMetadataDao() }
+    single { get<UsageDatabase>().dailyDeviceUsageDao() }
     
     // UsageStatsManager
     single {
@@ -50,6 +51,7 @@ val databaseModule = module {
             appCategoryDao = get(),
             appDao = get(),
             hourlyAppUsageDao = get(),
+            dailyDeviceUsageDao = get(),
             syncMetadataDao = get()
         )
     }
