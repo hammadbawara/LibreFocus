@@ -369,7 +369,7 @@ private fun UsageChartCard(
     }
     val bottomAxisFormatter = remember(bottomLabels) {
         CartesianValueFormatter { _, value, _ ->
-            bottomLabels.getOrNull(value.roundToInt()) ?: ""
+            if (bottomLabels.isEmpty()) "No data" else bottomLabels.getOrNull(value.roundToInt()) ?: "N/A"
         }
     }
 
