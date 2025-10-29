@@ -101,5 +101,9 @@ dependencies {
     // Compose Charts
     implementation (libs.compose.charts)
 
+    // Vico - Charts and Graphs
+    implementation(libs.vico.compose)
+    implementation(libs.vico.compose.m3)
+
 
 }

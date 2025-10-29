@@ -19,6 +19,8 @@ workRuntimeKtx = "2.10.5"
 ktor = "3.3.0"
 navigation = "2.9.5"
 kotlinxSerializationJson = "1.9.0"
+vico = "2.2.1"
+
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -74,6 +76,11 @@ androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", versi
 
 # For plotting graphs
 compose-charts = { module = "io.github.ehsannarmani:compose-charts", version.ref = "composeCharts" }
+
+# Vico - Charts and Graphs
+vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
+vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
