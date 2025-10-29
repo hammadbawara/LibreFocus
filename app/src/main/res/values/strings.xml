@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">LibreFocus</string>
+
+    <!-- Stats Screen -->
+    <string name="stats_title">Insights</string>
+    <string name="stats_top_apps_header">Top apps</string>
+    <string name="stats_no_app_usage">No app usage recorded for this range.</string>
+    <string name="stats_previous_label">Previous</string>
+    <string name="stats_next_label">Next</string>
+    <string name="stats_total_usage_title">Total screen time</string>
+    <string name="stats_average_session_title">Average session</string>
+    <string name="stats_total_unlocks_title">Total unlocks</string>
+    <string name="stats_app_usage_duration">%1$s of screen time</string>
+    <string name="stats_app_usage_launches">%1$d opens</string>
 </resources>

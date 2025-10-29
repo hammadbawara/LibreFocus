@@ -6,6 +6,7 @@ import com.librefocus.di.databaseModule
 import com.librefocus.di.homeModule
 import com.librefocus.di.mainModule
 import com.librefocus.di.onboardingModule
+import com.librefocus.di.statsModule
 import com.librefocus.di.workerModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -22,6 +23,7 @@ class LibreFocus: Application() {
                 dataStoreModule,
                 mainModule,
                 homeModule,
+                statsModule,
                 databaseModule,
                 workerModule
             )
