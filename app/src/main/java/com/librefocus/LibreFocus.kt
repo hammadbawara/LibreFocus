@@ -9,7 +9,9 @@ import com.librefocus.di.onboardingModule
 import com.librefocus.di.statsModule
 import com.librefocus.di.workerModule
 import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
+import org.koin.core.logger.Level
 
 class LibreFocus: Application() {
     override fun onCreate() {
@@ -17,14 +19,15 @@ class LibreFocus: Application() {
 
         // Initializing Koin for dependency injection
         startKoin {
+            androidLogger(Level.DEBUG)
             androidContext(this@LibreFocus)
             modules(
                 onboardingModule,
                 dataStoreModule,
+                databaseModule,
                 mainModule,
                 homeModule,
                 statsModule,
-                databaseModule,
                 workerModule
             )
         }

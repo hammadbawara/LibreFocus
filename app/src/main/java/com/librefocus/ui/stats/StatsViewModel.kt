@@ -25,6 +25,17 @@ class StatsViewModel(
     private val _range = MutableStateFlow(StatsRange.Day)
     val range: StateFlow<StatsRange> = _range
 
+    private val userZone: ZoneId = ZoneId.systemDefault()
+
+    private val dayLabelFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("EEE, dd MMM").withZone(userZone)
+
+    private val shortDateFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("dd MMM").withZone(userZone)
+
+    private val monthLabelFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("MMMM yyyy").withZone(userZone)
+
     private val _periodState = MutableStateFlow(initialPeriodState())
     val periodState: StateFlow<StatsPeriodState> = _periodState
 
@@ -306,15 +317,4 @@ class StatsViewModel(
         }
         return result
     }
-
-    private val userZone: ZoneId = ZoneId.systemDefault()
-
-    private val dayLabelFormatter: DateTimeFormatter =
-        DateTimeFormatter.ofPattern("EEE, dd MMM").withZone(userZone)
-
-    private val shortDateFormatter: DateTimeFormatter =
-        DateTimeFormatter.ofPattern("dd MMM").withZone(userZone)
-
-    private val monthLabelFormatter: DateTimeFormatter =
-        DateTimeFormatter.ofPattern("MMMM yyyy").withZone(userZone)
 }
