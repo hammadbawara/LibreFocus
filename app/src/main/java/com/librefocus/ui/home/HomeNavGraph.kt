@@ -3,18 +3,22 @@ package com.librefocus.ui.home
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.librefocus.R
+import com.librefocus.ui.limits.LimitsScreen
+import com.librefocus.ui.profile.ProfileScreen
 import com.librefocus.ui.stats.StatsScreen
 
 @Composable
@@ -59,6 +63,12 @@ fun HomeNavGraph() {
             composable(HomeDestination.Stats.route) {
                 StatsScreen()
             }
+            composable(HomeDestination.Limits.route) {
+                LimitsScreen()
+            }
+            composable(HomeDestination.Profile.route) {
+                ProfileScreen()
+            }
         }
     }
 }
@@ -71,15 +81,49 @@ private enum class HomeDestination(
     Home(
         route = "home",
         label = "Home",
-        icon = { androidx.compose.material3.Icon(imageVector = Icons.Outlined.Home, contentDescription = null) }
+        icon = { androidx.compose.material3.Icon(
+            imageVector = Icons.Outlined.Home,
+            contentDescription = null
+        )}
     ),
     Stats(
         route = "stats",
         label = "Stats",
-        icon = { androidx.compose.material3.Icon(imageVector = Icons.Outlined.Insights, contentDescription = null) }
+        icon = {
+            Icon(
+                painter = painterResource(
+                    id = R.drawable.ic_graph_filled),
+                contentDescription = null
+            )
+        }
+    ),
+
+    Limits (
+        route = "limits",
+        label = "Limits",
+        icon = {
+            Icon(
+                painter = painterResource(
+                    id = R.drawable.ic_user_filled),
+                contentDescription = null
+            )
+        }
+    ),
+
+    Profile (
+        route = "profile",
+        label = "Profile",
+        icon = {
+            Icon(
+                painter = painterResource(
+                    id = R.drawable.ic_user_filled),
+                    contentDescription = null
+            )
+        }
     );
 
+
     companion object {
-        val entries: List<HomeDestination> = values().toList()
+        val entries: List<HomeDestination> = HomeDestination.entries
     }
 }
