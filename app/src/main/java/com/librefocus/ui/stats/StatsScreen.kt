@@ -122,12 +122,11 @@ fun StatsScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
+
                 item {
-                    StatsPeriodNavigator(
-                        label = period.label,
-                        onPrevious = viewModel::onNavigatePrevious,
-                        onNext = viewModel::onNavigateNext,
-                        isNextEnabled = true
+                    StatsMetricSelector(
+                        selectedMetric = metric,
+                        onMetricSelected = viewModel::onMetricSelected
                     )
                 }
 
@@ -144,17 +143,19 @@ fun StatsScreen(
                 }
 
                 item {
-                    StatsMetricSelector(
-                        selectedMetric = metric,
-                        onMetricSelected = viewModel::onMetricSelected
-                    )
-                }
-
-                item {
                     UsageChartCard(
                         usagePoints = uiState.usagePoints,
                         metric = metric,
                         range = range
+                    )
+                }
+
+                item {
+                    StatsPeriodNavigator(
+                        label = period.label,
+                        onPrevious = viewModel::onNavigatePrevious,
+                        onNext = viewModel::onNavigateNext,
+                        isNextEnabled = true
                     )
                 }
 
