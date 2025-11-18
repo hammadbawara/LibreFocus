@@ -54,7 +54,7 @@ fun HomeNavGraph() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = HomeDestination.Home.route,
+            startDestination = HomeDestination.Stats.route,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(HomeDestination.Home.route) {

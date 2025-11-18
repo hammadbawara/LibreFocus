@@ -55,6 +55,7 @@ import com.librefocus.models.UsageValuePoint
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
@@ -63,6 +64,7 @@ import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import org.koin.androidx.compose.koinViewModel
 import java.time.Instant
@@ -353,7 +355,7 @@ private fun UsageChartCard(
 
     LaunchedEffect(yValues) {
         chartModelProducer.runTransaction {
-            lineSeries {
+            columnSeries {
                 val values = if (yValues.isEmpty()) listOf(0.0) else yValues
                 series(values)
             }
@@ -374,11 +376,17 @@ private fun UsageChartCard(
         }
     }
 
-    val lineLayer = rememberLineCartesianLayer()
+    val lineLayer = rememberColumnCartesianLayer()
     val chart = rememberCartesianChart(
         lineLayer,
-        startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
-        bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = bottomAxisFormatter)
+        startAxis = VerticalAxis.rememberStart(
+            valueFormatter = startAxisFormatter,
+            guideline = null
+        ),
+        bottomAxis = HorizontalAxis.rememberBottom(
+            valueFormatter = bottomAxisFormatter,
+            guideline = null
+        )
     )
     val vicoTheme = rememberM3VicoTheme()
 
@@ -403,7 +411,7 @@ private fun UsageChartCard(
                     modelProducer = chartModelProducer,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp)
+                        .height(200.dp)
                 )
             }
         }
