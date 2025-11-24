@@ -34,22 +34,41 @@ com/librefocus/
 ├── LibreFocus.kt                    # Application class with Koin initialization
 ├── data/
 │   ├── local/
+│   │   ├── database/
+│   │   │   ├── dao/                 # Room DAOs
+│   │   │   └── entity/              # Room entities
 │   │   └── datastore/
-repository
+│   │       └── PreferencesDataStore.kt
+│   ├── repository/
+│   │   ├── PreferencesRepository.kt
+│   │   ├── UsageRepository.kt
+│   │   └── UsageTrackingRepository.kt
+│   └── local/
+│       └── datasource/
+│           └── UsageStatsDataSource.kt
 ├── di/
 │   ├── AppModule.kt
-dependencies
-│   └── DatastoreModule.kt
-dependencies
+│   ├── DatastoreModule.kt
+│   ├── DatabaseModule.kt
+│   └── WorkerModule.kt
 ├── models/
-│   └── AppUsage.kt
+│   ├── AppUsage.kt
+│   ├── AppUsageData.kt
+│   ├── HourlyUsageData.kt
+│   └── UsageValuePoint.kt
+├── utils/
+│   └── TimeUtils.kt
+├── workers/
+│   └── UsageTrackingWorker.kt
 └── ui/
     ├── MainActivity.kt
     ├── MainViewModel.kt
-    ViewModel
     ├── home/
     ├── onboarding/
-    navigation
+    ├── stats/
+    │   ├── StatsScreen.kt
+    │   ├── StatsViewModel.kt
+    │   └── components/
     └── theme/
 ```
 
@@ -67,22 +86,41 @@ dependencies
 - [x] Material 3 theming (colors, typography)
 - [x] Basic app usage data model
 - [x] Usage and Preferences repositories
+- [x] **Room database implementation**
+  - [x] App usage history tracking (hourly aggregation)
+  - [x] App entities and categories
+  - [x] Daily device usage (unlock tracking)
+  - [x] Sync metadata
+- [x] **Usage tracking infrastructure**
+  - [x] UsageStatsDataSource for system stats
+  - [x] UsageTrackingRepository with hourly aggregation
+  - [x] WorkManager for periodic background sync
+  - [x] Session duration calculation
+  - [x] Launch count tracking
+  - [x] Unlock count tracking
+- [x] **Stats/Analytics Screen**
+  - [x] Daily/weekly/monthly usage charts
+  - [x] Metric selection (usage time, launches, unlocks)
+  - [x] Time range selector with custom range picker
+  - [x] Period navigation (previous/next)
+  - [x] Top apps list
+  - [x] Summary statistics
 
 ### 🚧 In Progress / To Be Implemented
 
 #### 1. Data Layer Enhancement
-- [ ] Implement Room database for:
-  - [ ] App usage history tracking
-  - [ ] App categories (custom + predefined)
-  - [ ] Gamification data (badges, streaks, points)
-  - [ ] Focus sessions and blocking rules
-- [ ] Create entities, DAOs, and database migrations
+- [x] ~~Implement Room database for:~~
+  - [x] ~~App usage history tracking~~
+  - [x] ~~App categories (custom + predefined)~~
+  - [x] ~~Gamification data (badges, streaks, points)~~
+  - [x] ~~Focus sessions and blocking rules~~
+- [x] ~~Create entities, DAOs, and database migrations~~
 - [ ] Add Ktor client for remote sync (optional)
 
 #### 2. Core Features
-- [ ] **Insights & Analytics**
-  - [ ] Daily/weekly/monthly usage charts
-  - [ ] Category-based statistics
+- [x] **Insights & Analytics**
+  - [x] Daily/weekly/monthly usage charts
+  - [x] Category-based statistics
   - [ ] Usage trends and heatmaps
   
 - [ ] **App Categorization**
@@ -114,14 +152,15 @@ dependencies
   - [ ] Backup & restore functionality
 
 #### 3. UI/UX Improvements
-- [ ] Complete insights/analytics screens
+- [x] ~~Complete insights/analytics screens~~
 - [ ] App categorization management UI
 - [ ] Gamification dashboard
 - [ ] Prevention tools settings
 - [ ] AI/motivation screens
+- [ ] Enhanced data visualization (heatmaps, trends)
 
 #### 4. Background Services
-- [ ] WorkManager for periodic usage tracking
+- [x] ~~WorkManager for periodic usage tracking~~
 - [ ] Foreground service for active monitoring
 - [ ] Accessibility service for app blocking
 
@@ -237,13 +276,13 @@ When generating code:
 1. ✅ Project setup
 2. ✅ Basic navigation
 3. ✅ Onboarding flow
-4. 🚧 Usage tracking infrastructure
+4. ✅ Usage tracking infrastructure
 
 ### Phase 2: Core Analytics
-1. Room database setup
-2. Usage stats collection
-3. Basic insights visualization
-4. App categorization
+1. ✅ Room database setup
+2. ✅ Usage stats collection
+3. ✅ Basic insights visualization
+4. 🚧 App categorization
 
 ### Phase 3: Prevention Tools
 1. App blocking mechanism
