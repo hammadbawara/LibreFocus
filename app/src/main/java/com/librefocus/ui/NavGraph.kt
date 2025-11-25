@@ -2,8 +2,12 @@ package com.librefocus.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -48,7 +52,7 @@ fun NavGraph() {
                                 }
                             }
                         },
-                        icon = destination.icon,
+                        icon = { if (currentRoute == destination.route) destination.selectedIcon() else destination.unselectedIcon() },
                         label = { Text(text = destination.label) }
                     )
                 }
@@ -89,12 +93,19 @@ fun NavGraph() {
 private enum class HomeDestination(
     val route: String,
     val label: String,
-    val icon: @Composable () -> Unit
+    val selectedIcon: @Composable () -> Unit,
+    val unselectedIcon: @Composable () -> Unit
 ) {
     Home(
         route = "home",
         label = "Home",
-        icon = {
+        selectedIcon = {
+            Icon(
+                imageVector = Icons.Filled.Home,
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
             Icon(
                 imageVector = Icons.Outlined.Home,
                 contentDescription = null
@@ -104,10 +115,17 @@ private enum class HomeDestination(
     Stats(
         route = "stats",
         label = "Stats",
-        icon = {
+        selectedIcon = {
             Icon(
                 painter = painterResource(
                     id = R.drawable.ic_graph_filled),
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
+            Icon(
+                painter = painterResource(
+                    id = R.drawable.ic_graph_outlined),
                 contentDescription = null
             )
         }
@@ -116,10 +134,15 @@ private enum class HomeDestination(
     Limits (
         route = "limits",
         label = "Limits",
-        icon = {
+        selectedIcon = {
             Icon(
-                painter = painterResource(
-                    id = R.drawable.ic_user_filled),
+                imageVector = Icons.Filled.Block,
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
+            Icon(
+                imageVector = Icons.Outlined.Block,
                 contentDescription = null
             )
         }
@@ -128,10 +151,16 @@ private enum class HomeDestination(
     Settings (
         route = "settings",
         label = "Settings",
-        icon = {
+        selectedIcon = {
+            Icon(
+                imageVector = Icons.Filled.Settings,
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
             Icon(
                 imageVector = Icons.Outlined.Settings,
-                    contentDescription = null
+                contentDescription = null
             )
         }
     );
