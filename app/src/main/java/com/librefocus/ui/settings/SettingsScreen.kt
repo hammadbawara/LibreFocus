@@ -1,4 +1,4 @@
-package com.librefocus.ui.profile
+package com.librefocus.ui.settings
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Text
@@ -7,11 +7,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 @Composable
-fun ProfileScreen(modifier: Modifier = Modifier) {
+fun SettingsScreen(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        Text("Profile Screen")
+        Text("Settings Screen")
     }
 }

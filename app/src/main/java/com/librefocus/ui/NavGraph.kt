@@ -3,18 +3,15 @@ package com.librefocus.ui
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -22,7 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.librefocus.R
 import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.LimitsScreen
-import com.librefocus.ui.profile.ProfileScreen
+import com.librefocus.ui.settings.SettingsScreen
 import com.librefocus.ui.stats.StatsScreen
 
 @Composable
@@ -71,7 +68,7 @@ fun HomeNavGraph() {
                 LimitsScreen()
             }
             composable(HomeDestination.Profile.route) {
-                ProfileScreen()
+                SettingsScreen()
             }
         }
     }
@@ -117,12 +114,12 @@ private enum class HomeDestination(
     ),
 
     Profile (
-        route = "profile",
-        label = "Profile",
+        route = "settings",
+        label = "Settings",
         icon = {
             Icon(
                 painter = painterResource(
-                    id = R.drawable.ic_user_filled),
+                    id = R.drawable.ic_settings),
                     contentDescription = null
             )
         }
