@@ -1,5 +1,6 @@
 package com.librefocus.ui.stats
 
+import android.text.Layout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,9 +21,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.librefocus.models.UsageValuePoint
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisGuidelineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
@@ -31,8 +32,11 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
+import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
+import com.patrykandpatrick.vico.compose.common.insets
+import com.patrykandpatrick.vico.compose.common.shape.markerCorneredShape
 import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
@@ -44,11 +48,64 @@ import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerController
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerVisibilityListener
 import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
+import com.patrykandpatrick.vico.core.common.LayeredComponent
+import com.patrykandpatrick.vico.core.common.component.ShapeComponent
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape.Corner
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape.CornerTreatment
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
+
+@Composable
+internal fun rememberMarker(
+    valueFormatter: DefaultCartesianMarker.ValueFormatter = DefaultCartesianMarker.ValueFormatter.default(),
+    showIndicator: Boolean = true,
+): CartesianMarker {
+    val labelBackgroundShape = markerCorneredShape(Corner.Rounded)
+    val labelBackground =
+        rememberShapeComponent(
+            fill = fill(MaterialTheme.colorScheme.background),
+            shape = labelBackgroundShape,
+            strokeThickness = 1.dp,
+            strokeFill = fill(MaterialTheme.colorScheme.outline),
+        )
+    val label =
+        rememberTextComponent(
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlignment = Layout.Alignment.ALIGN_CENTER,
+            padding = insets(8.dp, 4.dp),
+            background = labelBackground,
+        )
+    val indicatorFrontComponent =
+        rememberShapeComponent(fill(MaterialTheme.colorScheme.surface), CorneredShape.Pill)
+    val guideline = rememberAxisGuidelineComponent()
+    return rememberDefaultCartesianMarker(
+        label = label,
+        valueFormatter = valueFormatter,
+        indicator =
+            if (showIndicator) {
+                { color ->
+                    LayeredComponent(
+                        back = ShapeComponent(fill(color.copy(alpha = 0.15f)), CorneredShape.Pill),
+                        front =
+                            LayeredComponent(
+                                back = ShapeComponent(
+                                    fill = fill(color),
+                                    shape = CorneredShape.Pill
+                                ),
+                                front = indicatorFrontComponent,
+                                padding = insets(5.dp),
+                            ),
+                        padding = insets(10.dp),
+                    )
+                }
+            } else {
+                null
+            },
+        indicatorSize = 36.dp,
+        guideline = guideline,
+    )
+}
 
 @Composable
 fun UsageChartCard(
@@ -136,15 +193,7 @@ fun UsageChartCard(
             "$valueText\n$rangeText"
         }
     }
-    val markerLabel = rememberTextComponent(
-        color = MaterialTheme.colorScheme.onSurface,
-        textSize = 12.sp,
-        background = null
-    )
-    val marker = rememberDefaultCartesianMarker(
-        label = markerLabel,
-        valueFormatter = markerValueFormatter
-    )
+    val marker = rememberMarker(valueFormatter = markerValueFormatter)
     val markerVisibilityListener = remember(haptics) {
         object : CartesianMarkerVisibilityListener {
             override fun onShown(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
@@ -163,7 +212,7 @@ fun UsageChartCard(
                 val index = targets.firstOrNull()?.x?.roundToInt()
                 if (index != null && index != lastHighlightedIndex) {
                     lastHighlightedIndex = index
-                    //haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
             }
         }
