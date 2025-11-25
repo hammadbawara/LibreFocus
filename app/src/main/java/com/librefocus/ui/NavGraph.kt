@@ -1,4 +1,4 @@
-package com.librefocus.ui.home
+package com.librefocus.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -6,6 +6,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.librefocus.R
+import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.LimitsScreen
 import com.librefocus.ui.profile.ProfileScreen
 import com.librefocus.ui.stats.StatsScreen
@@ -28,7 +30,7 @@ fun HomeNavGraph() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    androidx.compose.material3.Scaffold(
+    Scaffold(
         bottomBar = {
             NavigationBar(tonalElevation = 0.dp) {
                 items.forEach { destination ->
@@ -55,7 +57,7 @@ fun HomeNavGraph() {
         NavHost(
             navController = navController,
             startDestination = HomeDestination.Stats.route,
-            modifier = Modifier.padding(innerPadding)
+            //modifier = Modifier.padding(innerPadding)
         ) {
             composable(HomeDestination.Home.route) {
                 HomeScreen()
@@ -81,10 +83,12 @@ private enum class HomeDestination(
     Home(
         route = "home",
         label = "Home",
-        icon = { androidx.compose.material3.Icon(
-            imageVector = Icons.Outlined.Home,
-            contentDescription = null
-        )}
+        icon = {
+            Icon(
+                imageVector = Icons.Outlined.Home,
+                contentDescription = null
+            )
+        }
     ),
     Stats(
         route = "stats",
