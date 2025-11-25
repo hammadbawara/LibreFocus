@@ -3,11 +3,13 @@ package com.librefocus.ui
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -32,7 +34,7 @@ fun HomeNavGraph() {
 
     Scaffold(
         bottomBar = {
-            NavigationBar(tonalElevation = 0.dp) {
+            NavigationBar {
                 items.forEach { destination ->
                     NavigationBarItem(
                         selected = currentRoute == destination.route,
@@ -57,7 +59,7 @@ fun HomeNavGraph() {
         NavHost(
             navController = navController,
             startDestination = HomeDestination.Stats.route,
-            //modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding)
         ) {
             composable(HomeDestination.Home.route) {
                 HomeScreen()
