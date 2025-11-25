@@ -20,6 +20,7 @@ ktor = "3.3.2"
 navigation = "2.9.6"
 kotlinxSerializationJson = "1.9.0"
 vico = "2.3.6"
+composeSettings = "2.16.0"
 
 
 [libraries]
@@ -81,6 +82,10 @@ compose-charts = { module = "io.github.ehsannarmani:compose-charts", version.ref
 # Vico - Charts and Graphs
 vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+
+# Compose Settings
+compose-settings-ui = { group = "com.github.alorma.compose-settings", name = "ui-tiles", version.ref = "composeSettings" }
+compose-settings-ui-extended = { group = "com.github.alorma.compose-settings", name = "ui-tiles-extended", version.ref = "composeSettings" }
 
 
 [plugins]

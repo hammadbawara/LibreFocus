@@ -2,7 +2,9 @@ package com.librefocus.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -23,7 +25,7 @@ import com.librefocus.ui.settings.SettingsScreen
 import com.librefocus.ui.stats.StatsScreen
 
 @Composable
-fun HomeNavGraph() {
+fun NavGraph() {
     val navController = rememberNavController()
     val items = HomeDestination.entries
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -67,8 +69,18 @@ fun HomeNavGraph() {
             composable(HomeDestination.Limits.route) {
                 LimitsScreen()
             }
-            composable(HomeDestination.Profile.route) {
-                SettingsScreen()
+            composable(HomeDestination.Settings.route) {
+                SettingsScreen(
+                    onBackClick = {
+                        navController.navigate(HomeDestination.Home.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
         }
     }
@@ -113,13 +125,12 @@ private enum class HomeDestination(
         }
     ),
 
-    Profile (
+    Settings (
         route = "settings",
         label = "Settings",
         icon = {
             Icon(
-                painter = painterResource(
-                    id = R.drawable.ic_settings),
+                imageVector = Icons.Outlined.Settings,
                     contentDescription = null
             )
         }

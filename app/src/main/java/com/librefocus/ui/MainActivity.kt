@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,7 +33,14 @@ class MainActivity() : ComponentActivity() {
         UsageSyncScheduler.schedulePeriodicSync(this)
 
         setContent {
-            LibreFocusTheme {
+            val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
+            val darkTheme = when (appTheme) {
+                "LIGHT" -> false
+                "DARK" -> true
+                else -> isSystemInDarkTheme()
+            }
+
+            LibreFocusTheme(darkTheme = darkTheme) {
                 val onboardingShown by viewModel.onboardingShown.collectAsStateWithLifecycle()
 
                 val navController = rememberNavController()
@@ -53,7 +61,7 @@ class MainActivity() : ComponentActivity() {
                     }
 
                     composable("home") {
-                        HomeNavGraph()
+                        NavGraph()
                     }
                 }
             }

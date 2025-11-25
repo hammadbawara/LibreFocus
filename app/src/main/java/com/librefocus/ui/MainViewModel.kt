@@ -15,6 +15,9 @@ class MainViewModel(
     val onboardingShown: StateFlow<Boolean> = repository.onboardingShown
         .stateIn(viewModelScope, SharingStarted.Companion.Eagerly, true)
 
+    val appTheme: StateFlow<String> = repository.appTheme
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "SYSTEM")
+
     fun setOnboardingShown(shown: Boolean) {
         viewModelScope.launch {
             repository.setOnboardingShown(shown)
