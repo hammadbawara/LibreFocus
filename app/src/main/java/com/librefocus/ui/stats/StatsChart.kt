@@ -194,29 +194,33 @@ fun UsageChartCard(
         }
     }
     val marker = rememberMarker(valueFormatter = markerValueFormatter)
-    val markerVisibilityListener = remember(haptics) {
-        object : CartesianMarkerVisibilityListener {
-            override fun onShown(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
-                maybeTriggerHaptics(targets)
-            }
 
-            override fun onUpdated(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
-                maybeTriggerHaptics(targets)
-            }
+    // For enabling haptics
+//    val markerVisibilityListener = remember(haptics) {
+//        object : CartesianMarkerVisibilityListener {
+//            override fun onShown(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
+//                maybeTriggerHaptics(targets)
+//            }
+//
+//            override fun onUpdated(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
+//                maybeTriggerHaptics(targets)
+//            }
+//
+//            override fun onHidden(marker: CartesianMarker) {
+//                lastHighlightedIndex = null
+//            }
+//
+//            private fun maybeTriggerHaptics(targets: List<CartesianMarker.Target>) {
+//                val index = targets.firstOrNull()?.x?.roundToInt()
+//                if (index != null && index != lastHighlightedIndex) {
+//                    lastHighlightedIndex = index
+//                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+//                }
+//            }
+//        }
+//    }
 
-            override fun onHidden(marker: CartesianMarker) {
-                lastHighlightedIndex = null
-            }
 
-            private fun maybeTriggerHaptics(targets: List<CartesianMarker.Target>) {
-                val index = targets.firstOrNull()?.x?.roundToInt()
-                if (index != null && index != lastHighlightedIndex) {
-                    lastHighlightedIndex = index
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                }
-            }
-        }
-    }
     val chart = rememberCartesianChart(
         columnLayer,
         endAxis = VerticalAxis.rememberEnd(
@@ -227,7 +231,7 @@ fun UsageChartCard(
             guideline = null
         ),
         marker = marker,
-        markerVisibilityListener = markerVisibilityListener,
+        //markerVisibilityListener = markerVisibilityListener,
         markerController = CartesianMarkerController.ShowOnPress
     )
     val vicoTheme = rememberM3VicoTheme()
