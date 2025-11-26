@@ -10,6 +10,6 @@
     <string name="stats_total_usage_title">Total screen time</string>
     <string name="stats_average_session_title">Average session</string>
     <string name="stats_total_unlocks_title">Total unlocks</string>
-    <string name="stats_app_usage_duration">%1$s of screen time</string>
+    <string name="stats_app_usage_duration">%1$s</string>
     <string name="stats_app_usage_launches">%1$d opens</string>
 </resources>

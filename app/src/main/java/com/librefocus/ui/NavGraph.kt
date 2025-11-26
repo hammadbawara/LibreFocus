@@ -1,36 +1,43 @@
-package com.librefocus.ui.home
+package com.librefocus.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.librefocus.R
+import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.LimitsScreen
-import com.librefocus.ui.profile.ProfileScreen
+import com.librefocus.ui.settings.SettingsScreen
 import com.librefocus.ui.stats.StatsScreen
 
 @Composable
-fun HomeNavGraph() {
+fun NavGraph() {
     val navController = rememberNavController()
     val items = HomeDestination.entries
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    androidx.compose.material3.Scaffold(
+    Scaffold(
         bottomBar = {
-            NavigationBar(tonalElevation = 0.dp) {
+            NavigationBar {
                 items.forEach { destination ->
                     NavigationBarItem(
                         selected = currentRoute == destination.route,
@@ -45,7 +52,7 @@ fun HomeNavGraph() {
                                 }
                             }
                         },
-                        icon = destination.icon,
+                        icon = { if (currentRoute == destination.route) destination.selectedIcon() else destination.unselectedIcon() },
                         label = { Text(text = destination.label) }
                     )
                 }
@@ -66,8 +73,18 @@ fun HomeNavGraph() {
             composable(HomeDestination.Limits.route) {
                 LimitsScreen()
             }
-            composable(HomeDestination.Profile.route) {
-                ProfileScreen()
+            composable(HomeDestination.Settings.route) {
+                SettingsScreen(
+                    onBackClick = {
+                        navController.navigate(HomeDestination.Home.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
         }
     }
@@ -76,23 +93,39 @@ fun HomeNavGraph() {
 private enum class HomeDestination(
     val route: String,
     val label: String,
-    val icon: @Composable () -> Unit
+    val selectedIcon: @Composable () -> Unit,
+    val unselectedIcon: @Composable () -> Unit
 ) {
     Home(
         route = "home",
         label = "Home",
-        icon = { androidx.compose.material3.Icon(
-            imageVector = Icons.Outlined.Home,
-            contentDescription = null
-        )}
+        selectedIcon = {
+            Icon(
+                imageVector = Icons.Filled.Home,
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
+            Icon(
+                imageVector = Icons.Outlined.Home,
+                contentDescription = null
+            )
+        }
     ),
     Stats(
         route = "stats",
         label = "Stats",
-        icon = {
+        selectedIcon = {
             Icon(
                 painter = painterResource(
                     id = R.drawable.ic_graph_filled),
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
+            Icon(
+                painter = painterResource(
+                    id = R.drawable.ic_graph_outlined),
                 contentDescription = null
             )
         }
@@ -101,23 +134,33 @@ private enum class HomeDestination(
     Limits (
         route = "limits",
         label = "Limits",
-        icon = {
+        selectedIcon = {
             Icon(
-                painter = painterResource(
-                    id = R.drawable.ic_user_filled),
+                imageVector = Icons.Filled.Block,
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
+            Icon(
+                imageVector = Icons.Outlined.Block,
                 contentDescription = null
             )
         }
     ),
 
-    Profile (
-        route = "profile",
-        label = "Profile",
-        icon = {
+    Settings (
+        route = "settings",
+        label = "Settings",
+        selectedIcon = {
             Icon(
-                painter = painterResource(
-                    id = R.drawable.ic_user_filled),
-                    contentDescription = null
+                imageVector = Icons.Filled.Settings,
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
+            Icon(
+                imageVector = Icons.Outlined.Settings,
+                contentDescription = null
             )
         }
     );

@@ -106,5 +106,9 @@ dependencies {
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)
 
+    // Compose Settings
+    implementation(libs.compose.settings.ui)
+    implementation(libs.compose.settings.ui.extended)
 
+    testImplementation(libs.junit)
 }

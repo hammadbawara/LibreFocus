@@ -4,13 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.librefocus.ui.home.HomeNavGraph
 import com.librefocus.ui.onboarding.OnboardingNavGraph
 import com.librefocus.ui.theme.LibreFocusTheme
 import com.librefocus.utils.UsageSyncScheduler
@@ -33,7 +33,14 @@ class MainActivity() : ComponentActivity() {
         UsageSyncScheduler.schedulePeriodicSync(this)
 
         setContent {
-            LibreFocusTheme {
+            val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
+            val darkTheme = when (appTheme) {
+                "LIGHT" -> false
+                "DARK" -> true
+                else -> isSystemInDarkTheme()
+            }
+
+            LibreFocusTheme(darkTheme = darkTheme) {
                 val onboardingShown by viewModel.onboardingShown.collectAsStateWithLifecycle()
 
                 val navController = rememberNavController()
@@ -54,7 +61,7 @@ class MainActivity() : ComponentActivity() {
                     }
 
                     composable("home") {
-                        HomeNavGraph()
+                        NavGraph()
                     }
                 }
             }
