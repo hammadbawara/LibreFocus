@@ -43,7 +43,7 @@ class UsageStatsDataSource(
                 .setEventTypes(
                     UsageEvents.Event.ACTIVITY_RESUMED,
                     UsageEvents.Event.ACTIVITY_PAUSED,
-                    UsageEvents.Event.ACTIVITY_STOPPED
+                    //UsageEvents.Event.ACTIVITY_STOPPED
                 )
                 .build()
 
