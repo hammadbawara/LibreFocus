@@ -26,11 +26,24 @@ class DebugActivity : ComponentActivity() {
 //            val endTime = System.currentTimeMillis()
 //            val startTime = endTime - (24 * 60 * 60 * 1000) // 24 hours ago
 
-            rawDataCollector.collectAndStoreRawData(1764010800000, 1764097200000)
+            //rawDataCollector.collectAndStoreRawData(1764230400000, 1764261454345)
 
-            // Log where files are saved
-            Log.d("DEBUG", "Files saved in: ${rawDataCollector.getDebugFolderPath()}")
-            Log.d("DEBUG", "Saved files: ${rawDataCollector.listSavedFiles()}")
+//            UsageStatsCollector(this@DebugActivity).collectAndStoreUsageStats(
+//                usageStatsManager = usageStatsManager,
+//                startTimeUtc = 1764230400000,
+//                endTimeUtc = 1764234000000
+//            )
+
+//            // Log where files are saved
+//            Log.d("DEBUG", "Files saved in: ${rawDataCollector.getDebugFolderPath()}")
+//            Log.d("DEBUG", "Saved files: ${rawDataCollector.listSavedFiles()}")
+
+            val usageAggregateStatsCollector = UsageAggregateStatsCollector(this@DebugActivity, usageStatsManager)
+
+            usageAggregateStatsCollector.collectAndStoreUsageStats(
+                startTimeUtc = 1764230400000,
+                endTimeUtc = 1764234000000
+            )
         }
     }
 }

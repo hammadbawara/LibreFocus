@@ -1,7 +1,6 @@
 package com.librefocus.data.local.datasource
 
 import android.app.usage.UsageEvents
-import android.app.usage.UsageEventsQuery
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.PackageManager
@@ -37,40 +36,35 @@ class UsageStatsDataSource(
         endTimeUtc: Long
     ): List<UsageEventData> = withContext(Dispatchers.IO) {
         val events = mutableListOf<UsageEventData>()
-
+        
         try {
-            val query = UsageEventsQuery.Builder(startTimeUtc, endTimeUtc)
-                .setEventTypes(
-                    UsageEvents.Event.ACTIVITY_RESUMED,
-                    UsageEvents.Event.ACTIVITY_PAUSED,
-                    //UsageEvents.Event.ACTIVITY_STOPPED
-                )
-                .build()
-
-            val usageEvents = usageStatsManager.queryEvents(query)
+            val usageEvents = usageStatsManager.queryEvents(startTimeUtc, endTimeUtc)
             val event = UsageEvents.Event()
-
-            usageEvents?.let { usageEvents->
-                while (usageEvents.hasNextEvent()) {
-                    usageEvents.getNextEvent(event)
-
-                    event.packageName?.let { packageName ->
-                        events.add(
-                            UsageEventData(
-                                packageName = packageName,
-                                timestampUtc = event.timeStamp,
-                                eventType = event.eventType
+            
+            while (usageEvents.hasNextEvent()) {
+                if (usageEvents.getNextEvent(event)) {
+                    val packageName = event.packageName ?: continue
+                    
+                    // Filter for relevant event types
+                    when (event.eventType) {
+                        UsageEvents.Event.ACTIVITY_RESUMED,
+                        UsageEvents.Event.ACTIVITY_PAUSED,
+                        UsageEvents.Event.ACTIVITY_STOPPED -> {
+                            events.add(
+                                UsageEventData(
+                                    packageName = packageName,
+                                    timestampUtc = event.timeStamp,
+                                    eventType = event.eventType
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
-
-
         } catch (e: Exception) {
-            Log.e("UsageEvents", "Error fetching usage events", e)
+            Log.e(TAG, "Error fetching usage events", e)
         }
-
+        
         events
     }
     

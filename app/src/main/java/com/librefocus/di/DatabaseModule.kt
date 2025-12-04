@@ -20,7 +20,7 @@ val databaseModule = module {
             UsageDatabase::class.java,
             UsageDatabase.DATABASE_NAME
         )
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(true)
             .build()
     }
     
