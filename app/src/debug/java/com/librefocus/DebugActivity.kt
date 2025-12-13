@@ -3,6 +3,9 @@
 package com.librefocus
 
 import android.app.usage.UsageStatsManager
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -21,6 +24,8 @@ class DebugActivity : ComponentActivity() {
         val dataSource = UsageStatsDataSource(this, usageStatsManager)
         rawDataCollector = RawDataCollector(this, dataSource)
 
+        val packageManager = packageManager
+
         // Collect data for last 24 hours
         lifecycleScope.launch {
 //            val endTime = System.currentTimeMillis()
@@ -38,12 +43,29 @@ class DebugActivity : ComponentActivity() {
 //            Log.d("DEBUG", "Files saved in: ${rawDataCollector.getDebugFolderPath()}")
 //            Log.d("DEBUG", "Saved files: ${rawDataCollector.listSavedFiles()}")
 
-            val usageAggregateStatsCollector = UsageAggregateStatsCollector(this@DebugActivity, usageStatsManager)
+//            val usageAggregateStatsCollector = UsageAggregateStatsCollector(this@DebugActivity, usageStatsManager)
+//
+//            usageAggregateStatsCollector.collectAndStoreUsageStats(
+//                startTimeUtc = 1764230400000,
+//                endTimeUtc = 1764234000000
+//            )
 
-            usageAggregateStatsCollector.collectAndStoreUsageStats(
-                startTimeUtc = 1764230400000,
-                endTimeUtc = 1764234000000
-            )
+            val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+
+            for (app in apps) {
+                val category = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    ApplicationInfo.getCategoryTitle(this@DebugActivity, app.category)
+                } else {
+                    "Unknown (below API 26)"
+                }
+
+                val label = packageManager.getApplicationLabel(app).toString()
+                val pkg = app.packageName
+
+                println("$pkg -> $label -> $category")
+            }
+
+
         }
     }
 }
