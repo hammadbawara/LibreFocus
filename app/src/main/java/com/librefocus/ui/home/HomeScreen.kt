@@ -29,7 +29,7 @@ fun HomeScreen(
                 title = { Text("Today's Usage") },
                 actions = {
                     IconButton(
-                        onClick = { viewModel.syncUsageStats(forceFullSync = false) },
+                        onClick = { viewModel.syncUsageStats() },
                         enabled = !state.isSyncing
                     ) {
                         if (state.isSyncing) {
