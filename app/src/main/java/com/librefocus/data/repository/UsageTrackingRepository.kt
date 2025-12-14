@@ -46,15 +46,10 @@ class UsageTrackingRepository(
         private const val DEFAULT_CATEGORY_NAME = "Uncategorized"
     }
 
-    suspend fun syncUsageStats(forceFullSync: Boolean = false) = withContext(Dispatchers.IO) {
+    suspend fun syncUsageStats() = withContext(Dispatchers.IO) {
         try{
             val lastTimeSyncDayStartUtc: Long = getLastSyncTime()?.let {
-                if (forceFullSync) {
-                    0L
-                }else{
-                    roundToDayStart(it)
-                }
-
+                roundToDayStart(it)
             } ?: 0L
             val currentUtc = System.currentTimeMillis()
 

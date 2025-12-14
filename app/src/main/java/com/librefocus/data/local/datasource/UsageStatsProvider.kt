@@ -43,11 +43,9 @@ class UsageStatsProvider(
         const val MILLISECONDS_PER_SECOND = 1000L
         const val SECONDS_PER_MINUTE = 60L
         const val MINUTES_PER_HOUR = 60L
-        const val SECONDS_PER_100_SECOND_BLOCK = 100L
 
         const val MILLISECONDS_PER_MINUTE = SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND
         const val MILLISECONDS_PER_HOUR = MINUTES_PER_HOUR * MILLISECONDS_PER_MINUTE
-        const val MILLISECONDS_PER_100_SECOND_BLOCK = SECONDS_PER_100_SECOND_BLOCK * MILLISECONDS_PER_SECOND
 
         const val CURRENT_TIME_THRESHOLD_MILLIS = 1500L
 
@@ -61,13 +59,6 @@ class UsageStatsProvider(
      */
     private fun calculateHourStartMillis(timestampMillis: Long): Long {
         return (timestampMillis / MILLISECONDS_PER_HOUR) * MILLISECONDS_PER_HOUR
-    }
-
-    /**
-     * Converts a timestamp to 100-second block units.
-     */
-    private fun convertTo100SecondBlocks(timestampMillis: Long): Long {
-        return timestampMillis / MILLISECONDS_PER_100_SECOND_BLOCK
     }
 
     /**
@@ -212,11 +203,10 @@ class UsageStatsProvider(
      * Retrieves hourly usage statistics for the specified time range.
      *
      * Returns a map where:
-     * - Key: Pair<String, Long> = (packageName, hourBlockIn100SecondUnits)
+     * - Key: Pair<String, Long> = (packageName, hourStartUtc)
      * - Value: Pair<Long, Int> = (totalUsageTimeMillis, sessionCount)
      *
-     * The hourBlockIn100SecondUnits represents the hour start time divided by 100 seconds,
-     * allowing efficient grouping and storage of hourly statistics.
+     * The hourStartUtc represents the start of the hour in UTC milliseconds.
      */
     fun getHourlyUsageStatistics(
         startTimeMillis: Long,
@@ -224,7 +214,7 @@ class UsageStatsProvider(
     ): Map<Pair<String, Long>, Pair<Long, Int>> {
         val sessions = extractAppForegroundSessions(startTimeMillis, endTimeMillis)
 
-        // Map: (packageName, hourBlock) -> (totalUsageTime, sessionCount)
+        // Map: (packageName, hourStartUtc) -> (totalUsageTime, sessionCount)
         val aggregatedData = mutableMapOf<Pair<String, Long>, Pair<Long, Int>>()
 
         for (session in sessions) {
@@ -241,8 +231,7 @@ class UsageStatsProvider(
                 val segmentEnd = minOf(sessionEnd, nextHourStart)
                 val segmentDuration = segmentEnd - currentPosition
 
-                val hourBlock = convertTo100SecondBlocks(currentHourStart)
-                val key = Pair(session.packageName, hourBlock)
+                val key = Pair(session.packageName, currentHourStart)
 
                 val existing = aggregatedData[key]
                 aggregatedData[key] = if (existing != null) {
