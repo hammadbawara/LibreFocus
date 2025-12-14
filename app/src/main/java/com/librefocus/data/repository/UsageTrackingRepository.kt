@@ -1,5 +1,6 @@
 package com.librefocus.data.repository
 
+import android.util.Log
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
 import com.librefocus.data.local.database.dao.DailyDeviceUsageDao
@@ -46,7 +47,29 @@ class UsageTrackingRepository(
     }
 
     suspend fun syncUsageStats(forceFullSync: Boolean = false) = withContext(Dispatchers.IO) {
+        try{
+            val lastTimeSyncDayStartUtc: Long = getLastSyncTime()?.let {
+                if (forceFullSync) {
+                    0L
+                }else{
+                    roundToDayStart(it)
+                }
 
+            } ?: 0L
+            val currentUtc = System.currentTimeMillis()
+
+            ensureDefaultCategoryExists()
+
+            val hourlyUsageMap = usageStatsProvider.getHourlyUsageStatistics(lastTimeSyncDayStartUtc, currentUtc)
+            saveHourlyUsageData(hourlyUsageMap)
+
+            updateLastSyncTime(currentUtc)
+
+            Log.d(TAG, "Sync completed successfully. Processed ${hourlyUsageMap.size} data")
+    } catch (e: Exception) {
+        Log.e(TAG, "Error syncing usage stats", e)
+        throw e
+    }
     }
 
     private suspend fun saveHourlyUsageData(
@@ -74,28 +97,14 @@ class UsageTrackingRepository(
             }
 
             if (app != null) {
-                // Check if usage record already exists
-                val existingUsage = hourlyAppUsageDao.getUsageForAppAtHour(app.id, hourStartUtc)
-
-                if (existingUsage != null) {
-                    // Update existing record by adding to duration and launch count
-                    hourlyAppUsageDao.updateUsage(
-                        existingUsage.copy(
-                            usageDurationMillis = existingUsage.usageDurationMillis + usageDuration,
-                            launchCount = existingUsage.launchCount + launchCount
-                        )
+                hourlyAppUsageDao.insertUsage(
+                    HourlyAppUsageEntity(
+                        appId = app.id,
+                        hourStartUtc = hourStartUtc,
+                        usageDurationMillis = usageDuration,
+                        launchCount = launchCount
                     )
-                } else {
-                    // Insert new record
-                    hourlyAppUsageDao.insertUsage(
-                        HourlyAppUsageEntity(
-                            appId = app.id,
-                            hourStartUtc = hourStartUtc,
-                            usageDurationMillis = usageDuration,
-                            launchCount = launchCount
-                        )
-                    )
-                }
+                )
             }
         }
     }
