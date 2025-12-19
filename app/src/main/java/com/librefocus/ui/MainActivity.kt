@@ -11,6 +11,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.librefocus.ui.navigation.NavGraph
 import com.librefocus.ui.onboarding.OnboardingNavGraph
 import com.librefocus.ui.theme.LibreFocusTheme
 import com.librefocus.utils.UsageSyncScheduler

@@ -24,7 +24,7 @@ class UsageSyncWorker(
             Log.d(TAG, "Starting background usage sync")
 
             // Perform incremental sync (only new data since last sync)
-            repository.syncUsageStats(forceFullSync = false)
+            repository.syncUsageStats()
 
             Log.d(TAG, "Background usage sync completed successfully")
             Result.success()

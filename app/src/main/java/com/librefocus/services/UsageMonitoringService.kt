@@ -47,7 +47,7 @@ class UsageMonitoringService : Service() {
             while (isActive) {
                 try {
                     Log.d(TAG, "Running periodic usage sync")
-                    repository.syncUsageStats(forceFullSync = false)
+                    repository.syncUsageStats()
 
                     // Wait 1 hour before next sync
                     delay(SYNC_INTERVAL_MS)

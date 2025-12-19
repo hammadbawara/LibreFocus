@@ -46,13 +46,13 @@ class HomeViewModel(
         }
     }
 
-    fun syncUsageStats(forceFullSync: Boolean = false) {
+    fun syncUsageStats() {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(isSyncing = true, error = null)
 
                 // Run the sync operation
-                repository.syncUsageStats(forceFullSync)
+                repository.syncUsageStats()
 
                 // Reload usage data after sync
                 val apps = getTodayUsage()
