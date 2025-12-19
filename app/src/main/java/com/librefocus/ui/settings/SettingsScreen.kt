@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import org.koin.androidx.compose.koinViewModel
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,7 +124,8 @@ fun SettingsScreen(
                     title = { Text("LibreFocus") },
                     subtitle = { Text("v1.0.0") },
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/LibreFocus/LibreFocus"))
+                        val intent = Intent(Intent.ACTION_VIEW,
+                            "https://github.com/hammadbawara/LibreFocus".toUri())
                         context.startActivity(intent)
                     }
                 )
