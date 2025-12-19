@@ -11,8 +11,7 @@ import com.librefocus.data.local.database.entity.AppEntity
 import com.librefocus.data.local.database.entity.DailyDeviceUsageEntity
 import com.librefocus.data.local.database.entity.HourlyAppUsageEntity
 import com.librefocus.data.local.database.entity.SyncMetadataEntity
-import com.librefocus.data.local.datasource.UsageStatsProvider
-import com.librefocus.models.AppUsageAverages
+import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.models.AppUsageData
 import com.librefocus.models.HourlyUsageData
 import com.librefocus.models.UsageValuePoint
@@ -22,10 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.time.YearMonth
-import java.time.ZoneOffset
 import java.util.concurrent.TimeUnit
-import kotlin.math.roundToInt
 
 /**
  * Repository for managing app usage tracking.

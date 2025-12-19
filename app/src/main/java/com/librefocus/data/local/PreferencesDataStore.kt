@@ -1,4 +1,4 @@
-package com.librefocus.data.local.datastore
+package com.librefocus.data.local
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey

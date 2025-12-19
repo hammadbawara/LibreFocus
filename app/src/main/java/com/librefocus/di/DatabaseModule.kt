@@ -4,7 +4,7 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import androidx.room.Room
 import com.librefocus.data.local.database.UsageDatabase
-import com.librefocus.data.local.datasource.UsageStatsProvider
+import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.data.repository.UsageTrackingRepository
 import org.koin.dsl.module
 
