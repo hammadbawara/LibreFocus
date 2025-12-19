@@ -55,7 +55,7 @@ interface HourlyAppUsageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUsages(usages: List<HourlyAppUsageEntity>): List<Long>
     
-    @Update
+    @Update(onConflict = OnConflictStrategy.REPLACE)
     suspend fun updateUsage(usage: HourlyAppUsageEntity)
     
     @Delete
