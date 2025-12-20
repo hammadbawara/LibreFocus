@@ -202,8 +202,8 @@ class StatsViewModel(
                 }
                 
                 // Convert UTC data points to local time for UI display
-                ///val usagePointsLocal = convertUsagePointsToLocal(rawUsagePoints)
-                val filledUsagePoints = fillMissingUsagePoints(rawUsagePoints, period, _range.value)
+                val usagePointsLocal = convertUsagePointsToLocal(rawUsagePoints)
+                val filledUsagePoints = fillMissingUsagePoints(usagePointsLocal, period, _range.value)
                 
                 val appUsage = usageRepository.getAppUsageSummaryInTimeRange(
                     startUtc = period.startUtc,
@@ -402,6 +402,22 @@ class StatsViewModel(
             cursor += bucketSizeMillis
         }
         return filledPoints
+    }
+
+
+    /**
+     * Converts UTC-based usage points to local timezone.
+     * The bucketStartUtc in each point is converted to the equivalent local time bucket.
+     */
+    private fun convertUsagePointsToLocal(utcPoints: List<UsageValuePoint>): List<UsageValuePoint> {
+        return utcPoints.map { point ->
+            // Convert UTC bucket start to local time
+            val utcInstant = Instant.ofEpochMilli(point.bucketStartUtc)
+            val localDateTime = LocalDateTime.ofInstant(utcInstant, ZoneId.of("UTC"))
+            val localInstant = localDateTime.atZone(currentZone).toInstant()
+
+            point.copy(bucketStartUtc = localInstant.toEpochMilli())
+        }
     }
 
     /**
