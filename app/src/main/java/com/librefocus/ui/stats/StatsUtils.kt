@@ -3,7 +3,6 @@ package com.librefocus.ui.stats
 import com.librefocus.models.UsageValuePoint
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -42,12 +41,26 @@ fun formatDuration(millis: Long): String {
     }
 }
 
-fun formatBottomLabel(point: UsageValuePoint, range: StatsRange): String {
+/**
+ * Formats the bottom label for chart based on the usage point and time format preference.
+ * @param point UsageValuePoint with local time timestamp
+ * @param range The stats range type
+ * @param timeFormat User's time format preference ("12H" or "24H")
+ */
+fun formatBottomLabel(point: UsageValuePoint, range: StatsRange, timeFormat: String): String {
     val instant = Instant.ofEpochMilli(point.bucketStartUtc)
-    val zonedDateTime = instant.atZone(ZoneOffset.UTC)
+    val zonedDateTime = instant.atZone(ZoneId.systemDefault())
 
     return when (range) {
-        StatsRange.Day -> hourFormatter.format(zonedDateTime)
+        StatsRange.Day -> {
+            // Use 12H or 24H format based on user preference
+            val formatter = if (timeFormat == "12H") {
+                DateTimeFormatter.ofPattern("ha").withLocale(Locale.getDefault())
+            } else {
+                DateTimeFormatter.ofPattern("HH").withLocale(Locale.getDefault())
+            }
+            formatter.format(zonedDateTime)
+        }
         StatsRange.Week, StatsRange.Month, StatsRange.Custom -> dayFormatter.format(zonedDateTime)
     }
 }
@@ -66,9 +79,6 @@ fun formatMinutesLabel(value: Double): String {
         }
     }
 }
-
-private val hourFormatter: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("HH").withLocale(Locale.getDefault())
 
 private val dayFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("dd MMM").withLocale(Locale.getDefault())

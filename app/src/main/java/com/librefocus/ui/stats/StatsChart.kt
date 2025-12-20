@@ -111,7 +111,8 @@ internal fun rememberMarker(
 fun UsageChartCard(
     usagePoints: List<UsageValuePoint>,
     metric: StatsMetric,
-    range: StatsRange
+    range: StatsRange,
+    timeFormat: String = "24H"
 ) {
     val chartModelProducer = remember { CartesianChartModelProducer() }
     val haptics = LocalHapticFeedback.current
@@ -124,9 +125,9 @@ fun UsageChartCard(
             }
         }
     }
-    val bottomLabels = remember(usagePoints, range) {
+    val bottomLabels = remember(usagePoints, range, timeFormat) {
         usagePoints.map { point ->
-            formatBottomLabel(point, range)
+            formatBottomLabel(point, range, timeFormat)
         }
     }
     val columnThickness = remember(usagePoints.size) {

@@ -2,21 +2,25 @@ package com.librefocus.ui.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.librefocus.data.repository.PreferencesRepository
 import com.librefocus.data.repository.UsageTrackingRepository
 import com.librefocus.models.AppUsageData
 import com.librefocus.models.UsageValuePoint
-import com.librefocus.utils.roundToDayStart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 class StatsViewModel(
-    private val repository: UsageTrackingRepository
+    private val usageRepository: UsageTrackingRepository,
 ) : ViewModel() {
 
     private val _metric = MutableStateFlow(StatsMetric.ScreenTime)
@@ -25,16 +29,18 @@ class StatsViewModel(
     private val _range = MutableStateFlow(StatsRange.Day)
     val range: StateFlow<StatsRange> = _range
 
-    private val userZone: ZoneId = ZoneId.systemDefault()
+    // User's current timezone for converting UTC data to local time
+    private val currentZone: ZoneId = ZoneId.systemDefault()
 
+    // Formatters using user's local timezone
     private val dayLabelFormatter: DateTimeFormatter =
-        DateTimeFormatter.ofPattern("EEE, dd MMM").withZone(userZone)
+        DateTimeFormatter.ofPattern("EEE, dd MMM").withZone(currentZone)
 
     private val shortDateFormatter: DateTimeFormatter =
-        DateTimeFormatter.ofPattern("dd MMM").withZone(userZone)
+        DateTimeFormatter.ofPattern("dd MMM").withZone(currentZone)
 
     private val monthLabelFormatter: DateTimeFormatter =
-        DateTimeFormatter.ofPattern("MMMM yyyy").withZone(userZone)
+        DateTimeFormatter.ofPattern("MMMM yyyy").withZone(currentZone)
 
     private val _periodState = MutableStateFlow(initialPeriodState())
     val periodState: StateFlow<StatsPeriodState> = _periodState
@@ -58,12 +64,12 @@ class StatsViewModel(
     fun onRangeSelected(range: StatsRange) {
         if (range == _range.value && range != StatsRange.Custom) return
         _range.value = range
-        val now = System.currentTimeMillis()
+        val nowLocal = ZonedDateTime.now(currentZone)
         val newPeriod = when (range) {
-            StatsRange.Day -> periodForDay(now)
-            StatsRange.Week -> periodForWeek(now)
-            StatsRange.Month -> periodForMonth(now)
-            StatsRange.Custom -> customRange ?: periodForWeek(now)
+            StatsRange.Day -> periodForDay(nowLocal)
+            StatsRange.Week -> periodForWeek(nowLocal)
+            StatsRange.Month -> periodForMonth(nowLocal)
+            StatsRange.Custom -> customRange ?: periodForWeek(nowLocal)
         }
         _periodState.value = newPeriod
         if (range == StatsRange.Custom) {
@@ -74,21 +80,31 @@ class StatsViewModel(
 
     fun onNavigatePrevious() {
         val current = _periodState.value
-        val diff = current.currentEndUtc - current.currentStartUtc
+        val durationMillis = current.endUtc - current.startUtc
         val newPeriod = when (_range.value) {
-            StatsRange.Day -> periodForDay(current.currentStartUtc - TimeUnit.DAYS.toMillis(1))
-            StatsRange.Week -> StatsPeriodState(
-                currentStartUtc = current.currentStartUtc - TimeUnit.DAYS.toMillis(7),
-                currentEndUtc = current.currentEndUtc - TimeUnit.DAYS.toMillis(7),
-                label = formatRangeLabel(current.currentStartUtc - TimeUnit.DAYS.toMillis(7), diff)
-            )
-            StatsRange.Month -> periodForMonth(current.currentStartUtc - TimeUnit.DAYS.toMillis(30))
-            StatsRange.Custom -> customRange?.let {
-                val length = it.currentEndUtc - it.currentStartUtc
-                val newStart = current.currentStartUtc - length
+            StatsRange.Day -> {
+                val previousDay = localDateFromUtc(current.startUtc).minusDays(1)
+                periodForDate(previousDay)
+            }
+            StatsRange.Week -> {
+                val newStartUtc = current.startUtc - TimeUnit.DAYS.toMillis(7)
+                val newEndUtc = current.endUtc - TimeUnit.DAYS.toMillis(7)
                 StatsPeriodState(
-                    currentStartUtc = newStart,
-                    currentEndUtc = newStart + length,
+                    startUtc = newStartUtc,
+                    endUtc = newEndUtc,
+                    label = formatRangeLabel(newStartUtc, durationMillis)
+                )
+            }
+            StatsRange.Month -> {
+                val previousMonth = localDateFromUtc(current.startUtc).minusMonths(1)
+                periodForMonth(previousMonth.atStartOfDay(currentZone))
+            }
+            StatsRange.Custom -> customRange?.let {
+                val length = it.endUtc - it.startUtc
+                val newStart = current.startUtc - length
+                StatsPeriodState(
+                    startUtc = newStart,
+                    endUtc = newStart + length,
                     label = formatRangeLabel(newStart, length)
                 )
             } ?: current
@@ -102,35 +118,39 @@ class StatsViewModel(
 
     fun onNavigateNext() {
         val current = _periodState.value
-        val diff = current.currentEndUtc - current.currentStartUtc
-        val now = System.currentTimeMillis()
+        val durationMillis = current.endUtc - current.startUtc
+        val todayLocal = LocalDate.now(currentZone)
+        val todayStartUtc = todayLocal.atStartOfDay(currentZone).toInstant().toEpochMilli()
+        
         val newPeriod = when (_range.value) {
             StatsRange.Day -> {
-                val candidateStart = current.currentStartUtc + TimeUnit.DAYS.toMillis(1)
-                if (candidateStart > roundToDayStart(now)) return
-                periodForDay(candidateStart)
+                val nextDay = localDateFromUtc(current.startUtc).plusDays(1)
+                val nextDayStartUtc = nextDay.atStartOfDay(currentZone).toInstant().toEpochMilli()
+                if (nextDayStartUtc > todayStartUtc) return
+                periodForDate(nextDay)
             }
             StatsRange.Week -> {
-                val candidateStart = current.currentStartUtc + TimeUnit.DAYS.toMillis(7)
-                if (candidateStart >= roundToDayStart(now) + TimeUnit.DAYS.toMillis(1)) return
+                val candidateStartUtc = current.startUtc + TimeUnit.DAYS.toMillis(7)
+                if (candidateStartUtc >= todayStartUtc + TimeUnit.DAYS.toMillis(1)) return
                 StatsPeriodState(
-                    currentStartUtc = candidateStart,
-                    currentEndUtc = candidateStart + diff,
-                    label = formatRangeLabel(candidateStart, diff)
+                    startUtc = candidateStartUtc,
+                    endUtc = candidateStartUtc + durationMillis,
+                    label = formatRangeLabel(candidateStartUtc, durationMillis)
                 )
             }
             StatsRange.Month -> {
-                val candidateStart = current.currentStartUtc + TimeUnit.DAYS.toMillis(30)
-                if (candidateStart >= roundToDayStart(now) + TimeUnit.DAYS.toMillis(1)) return
-                periodForMonth(candidateStart)
+                val nextMonth = localDateFromUtc(current.startUtc).plusMonths(1)
+                val nextMonthStartUtc = nextMonth.atStartOfDay(currentZone).toInstant().toEpochMilli()
+                if (nextMonthStartUtc >= todayStartUtc + TimeUnit.DAYS.toMillis(1)) return
+                periodForMonth(nextMonth.atStartOfDay(currentZone))
             }
             StatsRange.Custom -> {
-                val length = current.currentEndUtc - current.currentStartUtc
-                val candidateStart = current.currentStartUtc + length
-                if (candidateStart >= roundToDayStart(now) + TimeUnit.DAYS.toMillis(1)) return
+                val length = current.endUtc - current.startUtc
+                val candidateStart = current.startUtc + length
+                if (candidateStart >= todayStartUtc + TimeUnit.DAYS.toMillis(1)) return
                 val custom = StatsPeriodState(
-                    currentStartUtc = candidateStart,
-                    currentEndUtc = candidateStart + length,
+                    startUtc = candidateStart,
+                    endUtc = candidateStart + length,
                     label = formatRangeLabel(candidateStart, length)
                 )
                 customRange = custom
@@ -141,15 +161,21 @@ class StatsViewModel(
         refreshData()
     }
 
-    fun onCustomRangeSelected(startUtc: Long, endUtc: Long) {
-        val alignedStart = roundToDayStart(startUtc)
-        val alignedEnd = roundToDayStart(endUtc) + TimeUnit.DAYS.toMillis(1)
-        if (alignedEnd <= alignedStart) {
+    fun onCustomRangeSelected(startLocalMillis: Long, endLocalMillis: Long) {
+        // Convert local timestamps to UTC for storage and querying
+        val startLocalDate = localDateFromUtc(startLocalMillis)
+        val endLocalDate = localDateFromUtc(endLocalMillis)
+        
+        val startUtc = startLocalDate.atStartOfDay(currentZone).toInstant().toEpochMilli()
+        val endUtc = endLocalDate.plusDays(1).atStartOfDay(currentZone).toInstant().toEpochMilli()
+        
+        if (endUtc <= startUtc) {
             _uiState.update { it.copy(errorMessage = "Invalid range selection.") }
             return
         }
-        val label = formatCustomLabel(alignedStart, alignedEnd)
-        val period = StatsPeriodState(alignedStart, alignedEnd, label)
+        
+        val label = formatCustomLabel(startUtc, endUtc)
+        val period = StatsPeriodState(startUtc, endUtc, label)
         customRange = period
         _range.value = StatsRange.Custom
         _periodState.value = period
@@ -162,42 +188,52 @@ class StatsViewModel(
             runCatching {
                 val period = _periodState.value
                 val metric = _metric.value
+                
+                // Query data from repository using UTC timestamps
                 val rawUsagePoints = when (_range.value) {
-                    StatsRange.Day -> repository.getUsageTotalsGroupedByHour(
-                        period.currentStartUtc,
-                        period.currentEndUtc
+                    StatsRange.Day -> usageRepository.getUsageTotalsGroupedByHour(
+                        period.startUtc,
+                        period.endUtc
                     )
-                    StatsRange.Week, StatsRange.Month, StatsRange.Custom -> repository.getUsageTotalsGroupedByDay(
-                        period.currentStartUtc,
-                        period.currentEndUtc
+                    StatsRange.Week, StatsRange.Month, StatsRange.Custom -> usageRepository.getUsageTotalsGroupedByDay(
+                        period.startUtc,
+                        period.endUtc
                     )
                 }
-                val usagePoints = fillMissingUsagePoints(rawUsagePoints, period, _range.value)
-                val appUsage = repository.getAppUsageSummaryInTimeRange(
-                    startUtc = period.currentStartUtc,
-                    endUtc = period.currentEndUtc
+                
+                // Convert UTC data points to local time for UI display
+                ///val usagePointsLocal = convertUsagePointsToLocal(rawUsagePoints)
+                val filledUsagePoints = fillMissingUsagePoints(rawUsagePoints, period, _range.value)
+                
+                val appUsage = usageRepository.getAppUsageSummaryInTimeRange(
+                    startUtc = period.startUtc,
+                    endUtc = period.endUtc
                 )
-                val totalUsageMillis = usagePoints.sumOf { it.totalUsageMillis }
-                val totalUnlocks = repository.getDailyUnlockSummary(
-                    startUtc = period.currentStartUtc,
-                    endUtc = period.currentEndUtc
+                
+                val totalUsageMillis = filledUsagePoints.sumOf { it.totalUsageMillis }
+                val totalUnlocks = usageRepository.getDailyUnlockSummary(
+                    startUtc = period.startUtc,
+                    endUtc = period.endUtc
                 ).sumOf { it.totalUnlocks }
-                val activeUsageBuckets = usagePoints.count { it.totalUsageMillis > 0 }
+                
+                val activeUsageBuckets = filledUsagePoints.count { it.totalUsageMillis > 0 }
                 val averageSessionMillis = if (activeUsageBuckets > 0) {
                     totalUsageMillis / activeUsageBuckets
                 } else {
                     0L
                 }
+                
                 val selectedLabel = when (_range.value) {
                     StatsRange.Custom -> customRange?.label ?: period.label
                     else -> period.label
                 }
+                
                 StatsUiState(
                     selectedRangeLabel = selectedLabel,
                     totalUsageMillis = totalUsageMillis,
                     totalUnlocks = totalUnlocks,
                     averageSessionMillis = averageSessionMillis,
-                    usagePoints = usagePoints,
+                    usagePoints = filledUsagePoints,
                     appUsage = transformAppUsage(appUsage, metric),
                     isLoading = false
                 )
@@ -220,55 +256,115 @@ class StatsViewModel(
     }
 
     private fun initialPeriodState(): StatsPeriodState {
-        val now = System.currentTimeMillis()
-        return periodForDay(now)
+        val nowLocal = ZonedDateTime.now(currentZone)
+        return periodForDay(nowLocal)
     }
 
-    private fun periodForDay(referenceUtc: Long): StatsPeriodState {
-        val dayStart = roundToDayStart(referenceUtc)
-        val label = dayLabelFormatter.format(Instant.ofEpochMilli(dayStart))
+    /**
+     * Creates a period state for a specific day in the user's local timezone.
+     * @param localDateTime ZonedDateTime in the user's timezone
+     */
+    private fun periodForDay(localDateTime: ZonedDateTime): StatsPeriodState {
+        val dayStartLocal = localDateTime.toLocalDate().atStartOfDay(currentZone)
+        val dayStartUtc = dayStartLocal.toInstant().toEpochMilli()
+        val dayEndUtc = dayStartLocal.plusDays(1).toInstant().toEpochMilli()
+        val label = dayLabelFormatter.format(dayStartLocal)
         return StatsPeriodState(
-            currentStartUtc = dayStart,
-            currentEndUtc = dayStart + TimeUnit.DAYS.toMillis(1),
+            startUtc = dayStartUtc,
+            endUtc = dayEndUtc,
             label = label
         )
     }
 
-    private fun periodForWeek(referenceUtc: Long): StatsPeriodState {
-        val dayStart = roundToDayStart(referenceUtc)
-        val weekStart = dayStart - TimeUnit.DAYS.toMillis(6)
-        val label = formatRangeLabel(weekStart, TimeUnit.DAYS.toMillis(7))
+    /**
+     * Creates a period state for a specific date in the user's local timezone.
+     * @param localDate LocalDate in the user's timezone
+     */
+    private fun periodForDate(localDate: LocalDate): StatsPeriodState {
+        val dayStartLocal = localDate.atStartOfDay(currentZone)
+        val dayStartUtc = dayStartLocal.toInstant().toEpochMilli()
+        val dayEndUtc = dayStartLocal.plusDays(1).toInstant().toEpochMilli()
+        val label = dayLabelFormatter.format(dayStartLocal)
         return StatsPeriodState(
-            currentStartUtc = weekStart,
-            currentEndUtc = weekStart + TimeUnit.DAYS.toMillis(7),
+            startUtc = dayStartUtc,
+            endUtc = dayEndUtc,
             label = label
         )
     }
 
-    private fun periodForMonth(referenceUtc: Long): StatsPeriodState {
-        val instant = Instant.ofEpochMilli(referenceUtc)
-        val monthStart = instant.atZone(userZone).withDayOfMonth(1).toInstant().toEpochMilli()
-        val nextMonthStart = instant.atZone(userZone).plusMonths(1).withDayOfMonth(1).toInstant().toEpochMilli()
-        val label = monthLabelFormatter.format(Instant.ofEpochMilli(monthStart))
+    /**
+     * Creates a period state for a week ending on the given day in the user's local timezone.
+     * @param localDateTime ZonedDateTime in the user's timezone
+     */
+    private fun periodForWeek(localDateTime: ZonedDateTime): StatsPeriodState {
+        val dayStartLocal = localDateTime.toLocalDate().atStartOfDay(currentZone)
+        val weekStartLocal = dayStartLocal.minusDays(6)
+        val weekStartUtc = weekStartLocal.toInstant().toEpochMilli()
+        val weekEndUtc = weekStartLocal.plusDays(7).toInstant().toEpochMilli()
+        val label = formatRangeLabel(weekStartUtc, TimeUnit.DAYS.toMillis(7))
         return StatsPeriodState(
-            currentStartUtc = monthStart,
-            currentEndUtc = nextMonthStart,
+            startUtc = weekStartUtc,
+            endUtc = weekEndUtc,
             label = label
         )
     }
 
+    /**
+     * Creates a period state for a month in the user's local timezone.
+     * @param localDateTime ZonedDateTime in the user's timezone
+     */
+    private fun periodForMonth(localDateTime: ZonedDateTime): StatsPeriodState {
+        val monthStartLocal = localDateTime.withDayOfMonth(1).toLocalDate().atStartOfDay(currentZone)
+        val nextMonthStartLocal = monthStartLocal.plusMonths(1)
+        val monthStartUtc = monthStartLocal.toInstant().toEpochMilli()
+        val monthEndUtc = nextMonthStartLocal.toInstant().toEpochMilli()
+        val label = monthLabelFormatter.format(monthStartLocal)
+        return StatsPeriodState(
+            startUtc = monthStartUtc,
+            endUtc = monthEndUtc,
+            label = label
+        )
+    }
+
+    /**
+     * Formats a date range label for display.
+     * @param startUtc UTC timestamp of range start
+     * @param durationMillis Duration of the range in milliseconds
+     */
     private fun formatRangeLabel(startUtc: Long, durationMillis: Long): String {
-        val startLabel = shortDateFormatter.format(Instant.ofEpochMilli(startUtc))
-        val endLabel = shortDateFormatter.format(Instant.ofEpochMilli(startUtc + durationMillis - 1))
+        val startInstant = Instant.ofEpochMilli(startUtc).atZone(currentZone)
+        val endInstant = Instant.ofEpochMilli(startUtc + durationMillis - 1).atZone(currentZone)
+        val startLabel = shortDateFormatter.format(startInstant)
+        val endLabel = shortDateFormatter.format(endInstant)
         return "$startLabel – $endLabel"
     }
 
+    /**
+     * Formats a custom date range label for display.
+     * @param startUtc UTC timestamp of range start
+     * @param endUtc UTC timestamp of range end (exclusive)
+     */
     private fun formatCustomLabel(startUtc: Long, endUtc: Long): String {
-        val startLabel = shortDateFormatter.format(Instant.ofEpochMilli(startUtc))
-        val endLabel = shortDateFormatter.format(Instant.ofEpochMilli(endUtc - 1))
+        val startInstant = Instant.ofEpochMilli(startUtc).atZone(currentZone)
+        val endInstant = Instant.ofEpochMilli(endUtc - 1).atZone(currentZone)
+        val startLabel = shortDateFormatter.format(startInstant)
+        val endLabel = shortDateFormatter.format(endInstant)
         return "$startLabel – $endLabel"
     }
 
+    /**
+     * Helper function to convert UTC milliseconds to LocalDate in user's timezone.
+     */
+    private fun localDateFromUtc(utcMillis: Long): LocalDate {
+        return Instant.ofEpochMilli(utcMillis).atZone(currentZone).toLocalDate()
+    }
+
+    /**
+     * Fills missing time buckets with empty data points.
+     * @param points List of usage points in local time
+     * @param period The period state containing UTC start and end times
+     * @param range The stats range type
+     */
     private fun fillMissingUsagePoints(
         points: List<UsageValuePoint>,
         period: StatsPeriodState,
@@ -279,17 +375,25 @@ class StatsViewModel(
             StatsRange.Week, StatsRange.Month, StatsRange.Custom -> TimeUnit.DAYS.toMillis(1)
         }
 
+        // Convert period boundaries to local time for bucket generation
+        val startLocal = Instant.ofEpochMilli(period.startUtc).atZone(currentZone)
+        val endLocal = Instant.ofEpochMilli(period.endUtc).atZone(currentZone)
+        val startLocalMillis = startLocal.toInstant().toEpochMilli()
+        val endLocalMillis = endLocal.toInstant().toEpochMilli()
+
         val filteredPoints = points.filter { point ->
-            point.bucketStartUtc >= period.currentStartUtc && point.bucketStartUtc < period.currentEndUtc
+            point.bucketStartUtc >= startLocalMillis && point.bucketStartUtc < endLocalMillis
         }
+        
         if (filteredPoints.isEmpty()) {
-            return generateEmptySeries(period, range)
+            return generateEmptySeriesLocal(startLocalMillis, endLocalMillis, range)
         }
 
         val pointMap = filteredPoints.associateBy { it.bucketStartUtc }
         val filledPoints = mutableListOf<UsageValuePoint>()
-        var cursor = period.currentStartUtc
-        while (cursor < period.currentEndUtc) {
+        var cursor = startLocalMillis
+        
+        while (cursor < endLocalMillis) {
             filledPoints += pointMap[cursor] ?: UsageValuePoint(
                 bucketStartUtc = cursor,
                 totalUsageMillis = 0L,
@@ -300,14 +404,22 @@ class StatsViewModel(
         return filledPoints
     }
 
-    private fun generateEmptySeries(period: StatsPeriodState, range: StatsRange): List<UsageValuePoint> {
+    /**
+     * Generates an empty series of usage points for the given local time range.
+     */
+    private fun generateEmptySeriesLocal(
+        startLocalMillis: Long,
+        endLocalMillis: Long,
+        range: StatsRange
+    ): List<UsageValuePoint> {
         val bucketSizeMillis = when (range) {
             StatsRange.Day -> TimeUnit.HOURS.toMillis(1)
             StatsRange.Week, StatsRange.Month, StatsRange.Custom -> TimeUnit.DAYS.toMillis(1)
         }
         val result = mutableListOf<UsageValuePoint>()
-        var cursor = period.currentStartUtc
-        while (cursor < period.currentEndUtc) {
+        var cursor = startLocalMillis
+        
+        while (cursor < endLocalMillis) {
             result += UsageValuePoint(
                 bucketStartUtc = cursor,
                 totalUsageMillis = 0L,

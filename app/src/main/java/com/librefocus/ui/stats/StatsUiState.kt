@@ -17,10 +17,14 @@ data class StatsUiState(
     val errorMessage: String? = null
 )
 
+/**
+ * Represents the time period for statistics display.
+ * Times are stored in UTC for data querying but are presented to users in their local timezone.
+ */
 data class StatsPeriodState(
-    val currentStartUtc: Long,
-    val currentEndUtc: Long,
-    val label: String
+    val startUtc: Long,  // UTC timestamp for period start
+    val endUtc: Long,    // UTC timestamp for period end (exclusive)
+    val label: String    // Formatted label in user's local time
 )
 
 enum class StatsMetric {

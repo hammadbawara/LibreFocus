@@ -52,7 +52,6 @@ fun StatsScreen(
     val range by viewModel.range.collectAsStateWithLifecycle()
     val metric by viewModel.metric.collectAsStateWithLifecycle()
     val period by viewModel.periodState.collectAsStateWithLifecycle()
-
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -65,8 +64,8 @@ fun StatsScreen(
 
     if (showCustomRangePicker) {
         CustomRangePickerDialog(
-            initialStartDate = period.currentStartUtc,
-            initialEndDate = period.currentEndUtc,
+            initialStartDate = period.startUtc,
+            initialEndDate = period.endUtc,
             onDismiss = { showCustomRangePicker = false },
             onConfirm = { start, end ->
                 viewModel.onCustomRangeSelected(start, end)
