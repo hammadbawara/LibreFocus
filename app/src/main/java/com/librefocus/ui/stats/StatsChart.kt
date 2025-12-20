@@ -115,8 +115,6 @@ fun UsageChartCard(
     timeFormat: String = "24H"
 ) {
     val chartModelProducer = remember { CartesianChartModelProducer() }
-    val haptics = LocalHapticFeedback.current
-    var lastHighlightedIndex by remember { mutableStateOf<Int?>(null) }
     val yValues = remember(usagePoints, metric) {
         usagePoints.map { point ->
             when (metric) {
@@ -196,31 +194,6 @@ fun UsageChartCard(
     }
     val marker = rememberMarker(valueFormatter = markerValueFormatter)
 
-    // For enabling haptics
-//    val markerVisibilityListener = remember(haptics) {
-//        object : CartesianMarkerVisibilityListener {
-//            override fun onShown(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
-//                maybeTriggerHaptics(targets)
-//            }
-//
-//            override fun onUpdated(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
-//                maybeTriggerHaptics(targets)
-//            }
-//
-//            override fun onHidden(marker: CartesianMarker) {
-//                lastHighlightedIndex = null
-//            }
-//
-//            private fun maybeTriggerHaptics(targets: List<CartesianMarker.Target>) {
-//                val index = targets.firstOrNull()?.x?.roundToInt()
-//                if (index != null && index != lastHighlightedIndex) {
-//                    lastHighlightedIndex = index
-//                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-//                }
-//            }
-//        }
-//    }
-
 
     val chart = rememberCartesianChart(
         columnLayer,
@@ -232,7 +205,6 @@ fun UsageChartCard(
             guideline = null
         ),
         marker = marker,
-        //markerVisibilityListener = markerVisibilityListener,
         markerController = CartesianMarkerController.ShowOnPress
     )
     val vicoTheme = rememberM3VicoTheme()
