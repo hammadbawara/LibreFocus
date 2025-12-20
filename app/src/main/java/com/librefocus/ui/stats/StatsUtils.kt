@@ -3,6 +3,7 @@ package com.librefocus.ui.stats
 import com.librefocus.models.UsageValuePoint
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -43,10 +44,11 @@ fun formatDuration(millis: Long): String {
 
 fun formatBottomLabel(point: UsageValuePoint, range: StatsRange): String {
     val instant = Instant.ofEpochMilli(point.bucketStartUtc)
-    val zone = ZoneId.systemDefault()
+    val zonedDateTime = instant.atZone(ZoneOffset.UTC)
+
     return when (range) {
-        StatsRange.Day -> hourFormatter.format(instant.atZone(zone))
-        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> dayFormatter.format(instant.atZone(zone))
+        StatsRange.Day -> hourFormatter.format(zonedDateTime)
+        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> dayFormatter.format(zonedDateTime)
     }
 }
 
