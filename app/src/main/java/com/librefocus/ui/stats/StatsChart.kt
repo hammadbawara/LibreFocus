@@ -209,71 +209,18 @@ fun UsageChartCard(
         markerController = CartesianMarkerController.ShowOnPress
     )
     val vicoTheme = rememberM3VicoTheme()
-    
-    // Calculate average based on range
-    val average = remember(yValues, range) {
-        if (yValues.isEmpty()) 0.0
-        else when (range) {
-            StatsRange.Day -> yValues.average() // Average per hour for daily view
-            else -> yValues.average() // Average per day for weekly/monthly view
-        }
-    }
-    
-    val total = remember(yValues) {
-        yValues.sum()
-    }
-    
-    val displayValue = remember(metric, average, total, range) {
-        when (metric) {
-            StatsMetric.ScreenTime -> {
-                val avgMillis = (average * TimeUnit.MINUTES.toMillis(1)).toLong()
-                formatDuration(avgMillis)
-            }
-            StatsMetric.Opens -> average.roundToInt().toString()
-        }
-    }
-    
-    val displayLabel = remember(range, metric) {
-        when (range) {
-            StatsRange.Day -> when (metric) {
-                StatsMetric.ScreenTime -> "Avg per hour"
-                StatsMetric.Opens -> "Avg opens per hour"
-            }
-            else -> when (metric) {
-                StatsMetric.ScreenTime -> "Avg per day"
-                StatsMetric.Opens -> "Avg opens per day"
-            }
-        }
-    }
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Average display at top-center
-        Text(
-            text = displayValue,
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+    // Chart only - no UI decorations
+    ProvideVicoTheme(theme = vicoTheme) {
+        CartesianChartHost(
+            chart = chart,
+            modelProducer = chartModelProducer,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            scrollState = scrollState,
+            consumeMoveEvents = true
         )
-        Text(
-            text = displayLabel,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        ProvideVicoTheme(theme = vicoTheme) {
-            CartesianChartHost(
-                chart = chart,
-                modelProducer = chartModelProducer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                scrollState = scrollState,
-                consumeMoveEvents = true
-            )
-        }
     }
 }
 

@@ -4,9 +4,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -119,6 +121,37 @@ fun StatsScreen(
                 }
 
                 item {
+                    // Calculate total and average using utility functions
+                    val total = calculateTotal(uiState.usagePoints, metric)
+                    val average = calculateAverage(uiState.usagePoints, metric, range)
+                    
+                    val totalValue = when (metric) {
+                        StatsMetric.ScreenTime -> formatDuration(total)
+                        StatsMetric.Opens -> total.toString()
+                    }
+                    
+                    val averageValue = when (metric) {
+                        StatsMetric.ScreenTime -> formatDuration(average)
+                        StatsMetric.Opens -> average.toString()
+                    }
+                    
+                    val totalLabel = formatTotalLabel(metric)
+                    val averageLabel = formatAverageLabel(range, metric)
+                    
+                    // Display total and average above the chart
+                    StatsTotalAndAverage(
+                        totalValue = totalValue,
+                        totalLabel = totalLabel,
+                        averageValue = averageValue,
+                        averageLabel = averageLabel
+                    )
+                }
+                
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                item {
                     UsageChartCard(
                         usagePoints = uiState.usagePoints,
                         metric = metric,
@@ -137,7 +170,13 @@ fun StatsScreen(
                 }
 
                 item {
-                    StatsSummarySection(uiState)
+                    // Display only unlocks in summary - screen time now shown above chart
+                    if (uiState.totalUnlocks > 0) {
+                        SummaryCard(
+                            title = stringResource(id = R.string.stats_total_unlocks_title),
+                            value = uiState.totalUnlocks.toString()
+                        )
+                    }
                 }
 
                 item {

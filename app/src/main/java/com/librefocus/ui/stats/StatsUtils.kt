@@ -100,5 +100,63 @@ fun formatMinutesLabel(value: Double): String {
     }
 }
 
+/**
+ * Calculates the total value for the given metric from usage points.
+ * @param usagePoints List of usage data points
+ * @param metric The metric type (ScreenTime or Opens)
+ * @return Total value in milliseconds (for ScreenTime) or count (for Opens)
+ */
+fun calculateTotal(usagePoints: List<UsageValuePoint>, metric: StatsMetric): Long {
+    if (usagePoints.isEmpty()) return 0L
+    return when (metric) {
+        StatsMetric.ScreenTime -> usagePoints.sumOf { it.totalUsageMillis }
+        StatsMetric.Opens -> usagePoints.sumOf { it.totalLaunchCount.toLong() }
+    }
+}
+
+/**
+ * Calculates the average value for the given metric from usage points.
+ * @param usagePoints List of usage data points
+ * @param metric The metric type (ScreenTime or Opens)
+ * @param range The time range for proper averaging context
+ * @return Average value in milliseconds (for ScreenTime) or count (for Opens)
+ */
+fun calculateAverage(usagePoints: List<UsageValuePoint>, metric: StatsMetric, range: StatsRange): Long {
+    if (usagePoints.isEmpty()) return 0L
+    val total = calculateTotal(usagePoints, metric)
+    return total / usagePoints.size
+}
+
+/**
+ * Formats the average label based on the range and metric.
+ * @param range The time range
+ * @param metric The metric type
+ * @return Formatted label string (e.g., "Avg per hour", "Avg per day")
+ */
+fun formatAverageLabel(range: StatsRange, metric: StatsMetric): String {
+    return when (range) {
+        StatsRange.Day -> when (metric) {
+            StatsMetric.ScreenTime -> "Avg per hour"
+            StatsMetric.Opens -> "Avg opens per hour"
+        }
+        else -> when (metric) {
+            StatsMetric.ScreenTime -> "Avg per day"
+            StatsMetric.Opens -> "Avg opens per day"
+        }
+    }
+}
+
+/**
+ * Formats the total label based on the metric.
+ * @param metric The metric type
+ * @return Formatted label string (e.g., "Total", "Total opens")
+ */
+fun formatTotalLabel(metric: StatsMetric): String {
+    return when (metric) {
+        StatsMetric.ScreenTime -> "Total"
+        StatsMetric.Opens -> "Total opens"
+    }
+}
+
 private val dayFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("dd MMM").withLocale(Locale.getDefault())
