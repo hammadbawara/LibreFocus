@@ -1,5 +1,6 @@
 package com.librefocus.utils
 
+import android.content.Context
 import android.text.format.DateFormat as AndroidDateFormat
 import com.librefocus.models.DateFormat
 import com.librefocus.models.DateTimePreferences
@@ -32,6 +33,7 @@ import java.util.Locale
  * ```
  */
 class DateTimeFormatterManager(
+    private val context: Context,
     preferencesFlow: Flow<DateTimePreferences>,
     private val locale: Locale = Locale.getDefault()
 ) {
@@ -64,7 +66,7 @@ class DateTimeFormatterManager(
         return when (timeFormat) {
             TimeFormat.SYSTEM -> {
                 // Use system locale to determine 12h/24h format
-                val pattern = if (AndroidDateFormat.is24HourFormat(null)) {
+                val pattern = if (AndroidDateFormat.is24HourFormat(context)) {
                     "HH:mm"
                 } else {
                     "h:mm a"
@@ -108,7 +110,7 @@ class DateTimeFormatterManager(
         val zoneId = ZoneId.of(prefs.getEffectiveTimeZoneId())
         
         val timePattern = when (timeFormat) {
-            TimeFormat.SYSTEM -> if (AndroidDateFormat.is24HourFormat(null)) "HH:mm" else "h:mm a"
+            TimeFormat.SYSTEM -> if (AndroidDateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a"
             TimeFormat.TWELVE_HOUR -> "h:mm a"
             TimeFormat.TWENTY_FOUR_HOUR -> "HH:mm"
         }
@@ -156,7 +158,7 @@ class DateTimeFormatterManager(
         val zoneId = ZoneId.of(prefs.getEffectiveTimeZoneId())
         
         val pattern = when (timeFormat) {
-            TimeFormat.SYSTEM -> if (AndroidDateFormat.is24HourFormat(null)) "HH" else "ha"
+            TimeFormat.SYSTEM -> if (AndroidDateFormat.is24HourFormat(context)) "HH" else "ha"
             TimeFormat.TWELVE_HOUR -> "ha"
             TimeFormat.TWENTY_FOUR_HOUR -> "HH"
         }
@@ -172,7 +174,7 @@ class DateTimeFormatterManager(
         val zoneId = ZoneId.of(prefs.getEffectiveTimeZoneId())
         
         val pattern = when (timeFormat) {
-            TimeFormat.SYSTEM -> if (AndroidDateFormat.is24HourFormat(null)) "HH:mm" else "h:mm a"
+            TimeFormat.SYSTEM -> if (AndroidDateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a"
             TimeFormat.TWELVE_HOUR -> "h:mm a"
             TimeFormat.TWENTY_FOUR_HOUR -> "HH:mm"
         }

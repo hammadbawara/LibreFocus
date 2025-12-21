@@ -11,6 +11,7 @@ val dataStoreModule = module {
     single { PreferencesRepository(get()) }
     single { 
         DateTimeFormatterManager(
+            context = get(),
             preferencesFlow = get<PreferencesRepository>().dateTimePreferences,
             locale = Locale.getDefault()
         )
