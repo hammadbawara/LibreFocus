@@ -42,8 +42,8 @@ class StatsViewModel(
                 initialValue = null
             )
 
-    private val _periodState = MutableStateFlow<StatsPeriodState?>(null)
-    val periodState: StateFlow<StatsPeriodState?> = _periodState
+    private val _periodState = MutableStateFlow(initialPeriodStateDefault())
+    val periodState: StateFlow<StatsPeriodState> = _periodState
 
     private val _uiState = MutableStateFlow(StatsUiState(isLoading = true))
     val uiState: StateFlow<StatsUiState> = _uiState
@@ -51,23 +51,19 @@ class StatsViewModel(
     private var customRange: StatsPeriodState? = null
 
     init {
-        // Initialize period state when formatted preferences are available
+        // Update period labels when formatted preferences change
         viewModelScope.launch {
             formattedPreferences.collect { formatted ->
-                if (formatted != null && _periodState.value == null) {
-                    _periodState.value = initialPeriodState(formatted)
-                    refreshData()
-                } else if (formatted != null) {
-                    // Refresh labels when preferences change
-                    _periodState.value?.let { current ->
-                        _periodState.value = when (_range.value) {
-                            StatsRange.Day -> periodForDay(formatted.toZonedDateTime(current.startUtc), formatted)
-                            StatsRange.Week -> periodForWeek(formatted.toZonedDateTime(current.startUtc), formatted)
-                            StatsRange.Month -> periodForMonth(formatted.toZonedDateTime(current.startUtc), formatted)
-                            StatsRange.Custom -> current.copy(
-                                label = formatRangeLabel(current.startUtc, current.endUtc - current.startUtc, formatted)
-                            )
-                        }
+                if (formatted != null) {
+                    val current = _periodState.value
+                    // Update labels with new formatting preferences
+                    _periodState.value = when (_range.value) {
+                        StatsRange.Day -> periodForDay(formatted.toZonedDateTime(current.startUtc), formatted)
+                        StatsRange.Week -> periodForWeek(formatted.toZonedDateTime(current.startUtc), formatted)
+                        StatsRange.Month -> periodForMonth(formatted.toZonedDateTime(current.startUtc), formatted)
+                        StatsRange.Custom -> current.copy(
+                            label = formatRangeLabel(current.startUtc, current.endUtc - current.startUtc, formatted)
+                        )
                     }
                     refreshData()
                 }
@@ -102,7 +98,7 @@ class StatsViewModel(
 
     fun onNavigatePrevious() {
         val formatted = formattedPreferences.value ?: return
-        val current = _periodState.value ?: return
+        val current = _periodState.value
         val durationMillis = current.endUtc - current.startUtc
         val newPeriod = when (_range.value) {
             StatsRange.Day -> {
@@ -141,7 +137,7 @@ class StatsViewModel(
 
     fun onNavigateNext() {
         val formatted = formattedPreferences.value ?: return
-        val current = _periodState.value ?: return
+        val current = _periodState.value
         val durationMillis = current.endUtc - current.startUtc
         val todayLocal = LocalDate.now(formatted.zoneId)
         val todayStartUtc = todayLocal.atStartOfDay(formatted.zoneId).toInstant().toEpochMilli()
@@ -211,7 +207,7 @@ class StatsViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching {
-                val period = _periodState.value
+                val period = _periodState.value  // Now guaranteed non-null
                 val metric = _metric.value
                 
                 // Query data from repository using UTC timestamps
@@ -280,6 +276,28 @@ class StatsViewModel(
         }
     }
 
+    /**
+     * Creates an initial period state using system defaults.
+     * This ensures the period state is never null, even before preferences load.
+     */
+    private fun initialPeriodStateDefault(): StatsPeriodState {
+        val now = System.currentTimeMillis()
+        val systemZone = java.time.ZoneId.systemDefault()
+        val dayStart = java.time.Instant.ofEpochMilli(now)
+            .atZone(systemZone)
+            .toLocalDate()
+            .atStartOfDay(systemZone)
+        
+        val dayStartUtc = dayStart.toInstant().toEpochMilli()
+        val dayEndUtc = dayStart.plusDays(1).toInstant().toEpochMilli()
+        
+        return StatsPeriodState(
+            startUtc = dayStartUtc,
+            endUtc = dayEndUtc,
+            label = "Today"  // Default label, will be updated when preferences load
+        )
+    }
+    
     private fun initialPeriodState(formatted: FormattedDateTimePreferences): StatsPeriodState {
         val nowLocal = ZonedDateTime.now(formatted.zoneId)
         return periodForDay(nowLocal, formatted)

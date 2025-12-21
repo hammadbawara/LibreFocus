@@ -63,7 +63,7 @@ fun StatsScreen(
 
     var showCustomRangePicker by rememberSaveable { mutableStateOf(false) }
 
-    if (showCustomRangePicker && period != null) {
+    if (showCustomRangePicker) {
         CustomRangePickerDialog(
             initialStartDate = period.startUtc,
             initialEndDate = period.endUtc,
@@ -129,7 +129,7 @@ fun StatsScreen(
 
                 item {
                     StatsPeriodNavigator(
-                        label = period?.label ?: "",
+                        label = period.label,
                         onPrevious = viewModel::onNavigatePrevious,
                         onNext = viewModel::onNavigateNext,
                         isNextEnabled = true
