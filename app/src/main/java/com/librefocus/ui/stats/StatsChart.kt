@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -188,8 +189,8 @@ fun UsageChartCard(
                 StatsMetric.ScreenTime -> formatDuration(point.totalUsageMillis)
                 StatsMetric.Opens -> "${point.totalLaunchCount} opens"
             }
-            val rangeText = point.markerRangeLabel(range, formatted)
-            "$valueText\n$rangeText"
+            val timeLabel = point.markerTimeLabel(range, formatted)
+            "$valueText – $timeLabel"
         }
     }
     val marker = rememberMarker(valueFormatter = markerValueFormatter)
@@ -208,34 +209,91 @@ fun UsageChartCard(
         markerController = CartesianMarkerController.ShowOnPress
     )
     val vicoTheme = rememberM3VicoTheme()
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = metric.displayName(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            ProvideVicoTheme(theme = vicoTheme) {
-                CartesianChartHost(
-                    chart = chart,
-                    modelProducer = chartModelProducer,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    scrollState = scrollState,
-                    consumeMoveEvents = true
-                )
+    
+    // Calculate average based on range
+    val average = remember(yValues, range) {
+        if (yValues.isEmpty()) 0.0
+        else when (range) {
+            StatsRange.Day -> yValues.average() // Average per hour for daily view
+            else -> yValues.average() // Average per day for weekly/monthly view
+        }
+    }
+    
+    val total = remember(yValues) {
+        yValues.sum()
+    }
+    
+    val displayValue = remember(metric, average, total, range) {
+        when (metric) {
+            StatsMetric.ScreenTime -> {
+                val avgMillis = (average * TimeUnit.MINUTES.toMillis(1)).toLong()
+                formatDuration(avgMillis)
+            }
+            StatsMetric.Opens -> average.roundToInt().toString()
+        }
+    }
+    
+    val displayLabel = remember(range, metric) {
+        when (range) {
+            StatsRange.Day -> when (metric) {
+                StatsMetric.ScreenTime -> "Avg per hour"
+                StatsMetric.Opens -> "Avg opens per hour"
+            }
+            else -> when (metric) {
+                StatsMetric.ScreenTime -> "Avg per day"
+                StatsMetric.Opens -> "Avg opens per day"
             }
         }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Average display at top-center
+        Text(
+            text = displayValue,
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = displayLabel,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        ProvideVicoTheme(theme = vicoTheme) {
+            CartesianChartHost(
+                chart = chart,
+                modelProducer = chartModelProducer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                scrollState = scrollState,
+                consumeMoveEvents = true
+            )
+        }
+    }
+}
+
+private fun UsageValuePoint.markerTimeLabel(
+    range: StatsRange,
+    formatted: com.librefocus.utils.FormattedDateTimePreferences?
+): String {
+    if (formatted == null) {
+        // Fallback to system default
+        val zone = java.time.ZoneId.systemDefault()
+        val start = java.time.Instant.ofEpochMilli(bucketStartUtc).atZone(zone)
+        return when (range) {
+            StatsRange.Day -> markerHourFormatterFallback.format(start)
+            StatsRange.Week, StatsRange.Month, StatsRange.Custom -> markerDayFormatterFallback.format(start)
+        }
+    }
+    
+    return when (range) {
+        StatsRange.Day -> formatted.formatTime(bucketStartUtc)
+        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> formatted.formatDate(bucketStartUtc)
     }
 }
 
@@ -272,7 +330,7 @@ private fun StatsRange.markerBucketDurationHours(): Long {
 
 // Fallback formatters for when preferences are not yet loaded
 private val markerHourFormatterFallback: java.time.format.DateTimeFormatter =
-    java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+    java.time.format.DateTimeFormatter.ofPattern("h:mm a")
 
 private val markerDayFormatterFallback: java.time.format.DateTimeFormatter =
-    java.time.format.DateTimeFormatter.ofPattern("dd MMM")
+    java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy")
