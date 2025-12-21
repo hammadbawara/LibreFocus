@@ -53,13 +53,11 @@ import androidx.core.net.toUri
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = koinViewModel(),
-    dateTimeViewModel: DateTimeSettingsViewModel = koinViewModel(),
     onBackClick: () -> Unit
 ) {
     val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
-    val timeFormat by viewModel.timeFormat.collectAsStateWithLifecycle()
-    val dateTimePrefs by dateTimeViewModel.dateTimePreferences.collectAsStateWithLifecycle()
-    val formattedPrefs by dateTimeViewModel.formattedPreferences.collectAsStateWithLifecycle()
+    val dateTimePrefs by viewModel.dateTimePreferences.collectAsStateWithLifecycle()
+    val formattedPrefs by viewModel.formattedPreferences.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showThemeDialog by remember { mutableStateOf(false) }
@@ -110,25 +108,6 @@ fun SettingsScreen(
                     },
                     onClick = { showThemeDialog = true }
                 )
-
-                SettingsMenuLink(
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = null
-                        )
-                    },
-                    title = { Text("Time Format") },
-                    subtitle = {
-                        Text(
-                            when (timeFormat) {
-                                "24H" -> "24-hour"
-                                else -> "12-hour"
-                            }
-                        )
-                    },
-                    onClick = { showTimeFormatDialog = true }
-                )
             }
             
             SettingsGroup(
@@ -144,7 +123,7 @@ fun SettingsScreen(
                     title = { Text("Use System Date & Time") },
                     subtitle = { Text("Automatically use system defaults for format and timezone") },
                     state = dateTimePrefs.useSystemDefaults,
-                    onCheckedChange = { dateTimeViewModel.setUseSystemDefaults(it) }
+                    onCheckedChange = { viewModel.setUseSystemDefaults(it) }
                 )
                 
                 if (!dateTimePrefs.useSystemDefaults) {
@@ -312,51 +291,30 @@ fun SettingsScreen(
             title = { Text("Time Format") },
             text = {
                 Column {
-                    if (dateTimePrefs.useSystemDefaults) {
-                        // Legacy time format selection (for backward compatibility)
-                        ThemeOption(
-                            text = "12-hour",
-                            selected = timeFormat == "12H",
-                            onClick = {
-                                viewModel.setTimeFormat("12H")
-                                showTimeFormatDialog = false
-                            }
-                        )
-                        ThemeOption(
-                            text = "24-hour",
-                            selected = timeFormat == "24H",
-                            onClick = {
-                                viewModel.setTimeFormat("24H")
-                                showTimeFormatDialog = false
-                            }
-                        )
-                    } else {
-                        // New time format selection with system default option
-                        ThemeOption(
-                            text = "System Default",
-                            selected = dateTimePrefs.timeFormat == TimeFormat.SYSTEM,
-                            onClick = {
-                                dateTimeViewModel.setTimeFormat(TimeFormat.SYSTEM)
-                                showTimeFormatDialog = false
-                            }
-                        )
-                        ThemeOption(
-                            text = "12-hour",
-                            selected = dateTimePrefs.timeFormat == TimeFormat.TWELVE_HOUR,
-                            onClick = {
-                                dateTimeViewModel.setTimeFormat(TimeFormat.TWELVE_HOUR)
-                                showTimeFormatDialog = false
-                            }
-                        )
-                        ThemeOption(
-                            text = "24-hour",
-                            selected = dateTimePrefs.timeFormat == TimeFormat.TWENTY_FOUR_HOUR,
-                            onClick = {
-                                dateTimeViewModel.setTimeFormat(TimeFormat.TWENTY_FOUR_HOUR)
-                                showTimeFormatDialog = false
-                            }
-                        )
-                    }
+                    ThemeOption(
+                        text = "System Default",
+                        selected = dateTimePrefs.timeFormat == TimeFormat.SYSTEM,
+                        onClick = {
+                            viewModel.setTimeFormat(TimeFormat.SYSTEM)
+                            showTimeFormatDialog = false
+                        }
+                    )
+                    ThemeOption(
+                        text = "12-hour",
+                        selected = dateTimePrefs.timeFormat == TimeFormat.TWELVE_HOUR,
+                        onClick = {
+                            viewModel.setTimeFormat(TimeFormat.TWELVE_HOUR)
+                            showTimeFormatDialog = false
+                        }
+                    )
+                    ThemeOption(
+                        text = "24-hour",
+                        selected = dateTimePrefs.timeFormat == TimeFormat.TWENTY_FOUR_HOUR,
+                        onClick = {
+                            viewModel.setTimeFormat(TimeFormat.TWENTY_FOUR_HOUR)
+                            showTimeFormatDialog = false
+                        }
+                    )
                 }
             },
             confirmButton = {
@@ -377,7 +335,7 @@ fun SettingsScreen(
                         text = "System Default",
                         selected = dateTimePrefs.dateFormat == DateFormat.SYSTEM,
                         onClick = {
-                            dateTimeViewModel.setDateFormat(DateFormat.SYSTEM)
+                            viewModel.setDateFormat(DateFormat.SYSTEM)
                             showDateFormatDialog = false
                         }
                     )
@@ -385,7 +343,7 @@ fun SettingsScreen(
                         text = "21 Dec 2025",
                         selected = dateTimePrefs.dateFormat == DateFormat.DD_MMM_YYYY,
                         onClick = {
-                            dateTimeViewModel.setDateFormat(DateFormat.DD_MMM_YYYY)
+                            viewModel.setDateFormat(DateFormat.DD_MMM_YYYY)
                             showDateFormatDialog = false
                         }
                     )
@@ -393,7 +351,7 @@ fun SettingsScreen(
                         text = "12/21/2025",
                         selected = dateTimePrefs.dateFormat == DateFormat.MM_DD_YYYY,
                         onClick = {
-                            dateTimeViewModel.setDateFormat(DateFormat.MM_DD_YYYY)
+                            viewModel.setDateFormat(DateFormat.MM_DD_YYYY)
                             showDateFormatDialog = false
                         }
                     )
@@ -401,7 +359,7 @@ fun SettingsScreen(
                         text = "2025-12-21",
                         selected = dateTimePrefs.dateFormat == DateFormat.YYYY_MM_DD,
                         onClick = {
-                            dateTimeViewModel.setDateFormat(DateFormat.YYYY_MM_DD)
+                            viewModel.setDateFormat(DateFormat.YYYY_MM_DD)
                             showDateFormatDialog = false
                         }
                     )
@@ -427,7 +385,7 @@ fun SettingsScreen(
                         text = "System Default",
                         selected = dateTimePrefs.timeZoneId.isNullOrEmpty() || dateTimePrefs.timeZoneId == "SYSTEM",
                         onClick = {
-                            dateTimeViewModel.setTimeZone(null)
+                            viewModel.setTimeZone(null)
                             showTimeZoneDialog = false
                         }
                     )
@@ -453,7 +411,7 @@ fun SettingsScreen(
                             text = zoneId.replace("_", " "),
                             selected = dateTimePrefs.timeZoneId == zoneId,
                             onClick = {
-                                dateTimeViewModel.setTimeZone(zoneId)
+                                viewModel.setTimeZone(zoneId)
                                 showTimeZoneDialog = false
                             }
                         )

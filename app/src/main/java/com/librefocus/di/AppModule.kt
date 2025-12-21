@@ -4,7 +4,6 @@ import com.librefocus.ui.MainViewModel
 import com.librefocus.ui.home.HomeViewModel
 import com.librefocus.ui.onboarding.OnboardingViewModel
 import com.librefocus.ui.stats.StatsViewModel
-import com.librefocus.ui.settings.DateTimeSettingsViewModel
 import com.librefocus.ui.settings.SettingsViewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
@@ -28,5 +27,4 @@ val statsModule = module {
 
 val settingsModule = module {
     viewModelOf(::SettingsViewModel)
-    viewModelOf(::DateTimeSettingsViewModel)
 }
