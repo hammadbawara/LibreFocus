@@ -14,7 +14,12 @@ data class StatsUiState(
     val usagePoints: List<UsageValuePoint> = emptyList(),
     val appUsage: List<AppUsageData> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    // Display values for total and average (pre-calculated in ViewModel)
+    val totalDisplayValue: String = "0m",
+    val totalDisplayLabel: String = "Total",
+    val averageDisplayValue: String = "0m",
+    val averageDisplayLabel: String = "Avg per hour"
 )
 
 /**

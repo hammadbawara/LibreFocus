@@ -121,29 +121,12 @@ fun StatsScreen(
                 }
 
                 item {
-                    // Calculate total and average using utility functions
-                    val total = calculateTotal(uiState.usagePoints, metric)
-                    val average = calculateAverage(uiState.usagePoints, metric, range)
-                    
-                    val totalValue = when (metric) {
-                        StatsMetric.ScreenTime -> formatDuration(total)
-                        StatsMetric.Opens -> total.toString()
-                    }
-                    
-                    val averageValue = when (metric) {
-                        StatsMetric.ScreenTime -> formatDuration(average)
-                        StatsMetric.Opens -> average.toString()
-                    }
-                    
-                    val totalLabel = formatTotalLabel(metric)
-                    val averageLabel = formatAverageLabel(range, metric)
-                    
-                    // Display total and average above the chart
+                    // Consume pre-calculated display values from ViewModel state
                     StatsTotalAndAverage(
-                        totalValue = totalValue,
-                        totalLabel = totalLabel,
-                        averageValue = averageValue,
-                        averageLabel = averageLabel
+                        totalValue = uiState.totalDisplayValue,
+                        totalLabel = uiState.totalDisplayLabel,
+                        averageValue = uiState.averageDisplayValue,
+                        averageLabel = uiState.averageDisplayLabel
                     )
                 }
                 

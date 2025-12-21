@@ -249,6 +249,23 @@ class StatsViewModel(
                     else -> period.label
                 }
                 
+                // Calculate total and average using utility functions
+                val totalValue = calculateTotal(filledUsagePoints, metric)
+                val averageValue = calculateAverage(filledUsagePoints, metric, _range.value)
+                
+                val totalDisplayValue = when (metric) {
+                    StatsMetric.ScreenTime -> formatDuration(totalValue)
+                    StatsMetric.Opens -> totalValue.toString()
+                }
+                
+                val averageDisplayValue = when (metric) {
+                    StatsMetric.ScreenTime -> formatDuration(averageValue)
+                    StatsMetric.Opens -> averageValue.toString()
+                }
+                
+                val totalDisplayLabel = formatTotalLabel(metric)
+                val averageDisplayLabel = formatAverageLabel(_range.value, metric)
+                
                 StatsUiState(
                     selectedRangeLabel = selectedLabel,
                     totalUsageMillis = totalUsageMillis,
@@ -256,7 +273,11 @@ class StatsViewModel(
                     averageSessionMillis = averageSessionMillis,
                     usagePoints = filledUsagePoints,
                     appUsage = transformAppUsage(appUsage, metric),
-                    isLoading = false
+                    isLoading = false,
+                    totalDisplayValue = totalDisplayValue,
+                    totalDisplayLabel = totalDisplayLabel,
+                    averageDisplayValue = averageDisplayValue,
+                    averageDisplayLabel = averageDisplayLabel
                 )
             }.onSuccess { state ->
                 _uiState.value = state
