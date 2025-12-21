@@ -3,8 +3,8 @@ package com.librefocus.di
 import com.librefocus.ui.MainViewModel
 import com.librefocus.ui.home.HomeViewModel
 import com.librefocus.ui.onboarding.OnboardingViewModel
-import com.librefocus.ui.stats.StatsViewModel
 import com.librefocus.ui.settings.SettingsViewModel
+import com.librefocus.ui.stats.StatsViewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 

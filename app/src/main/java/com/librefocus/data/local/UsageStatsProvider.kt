@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.collections.iterator
 
 /**
  * Represents a continuous foreground session for an application.
