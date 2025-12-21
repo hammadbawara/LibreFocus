@@ -52,6 +52,7 @@ fun StatsScreen(
     val range by viewModel.range.collectAsStateWithLifecycle()
     val metric by viewModel.metric.collectAsStateWithLifecycle()
     val period by viewModel.periodState.collectAsStateWithLifecycle()
+    val formattedPrefs by viewModel.formattedPreferences.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -62,7 +63,7 @@ fun StatsScreen(
 
     var showCustomRangePicker by rememberSaveable { mutableStateOf(false) }
 
-    if (showCustomRangePicker) {
+    if (showCustomRangePicker && period != null) {
         CustomRangePickerDialog(
             initialStartDate = period.startUtc,
             initialEndDate = period.endUtc,
@@ -121,13 +122,14 @@ fun StatsScreen(
                     UsageChartCard(
                         usagePoints = uiState.usagePoints,
                         metric = metric,
-                        range = range
+                        range = range,
+                        formatted = formattedPrefs
                     )
                 }
 
                 item {
                     StatsPeriodNavigator(
-                        label = period.label,
+                        label = period?.label ?: "",
                         onPrevious = viewModel::onNavigatePrevious,
                         onNext = viewModel::onNavigateNext,
                         isNextEnabled = true

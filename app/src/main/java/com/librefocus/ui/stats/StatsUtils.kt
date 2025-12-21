@@ -1,6 +1,7 @@
 package com.librefocus.ui.stats
 
 import com.librefocus.models.UsageValuePoint
+import com.librefocus.utils.FormattedDateTimePreferences
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -42,12 +43,31 @@ fun formatDuration(millis: Long): String {
 }
 
 /**
- * Formats the bottom label for chart based on the usage point and time format preference.
+ * Formats the bottom label for chart based on the usage point and formatted preferences.
+ * @param point UsageValuePoint with local time timestamp
+ * @param range The stats range type
+ * @param formatted Formatted date/time preferences
+ */
+fun formatBottomLabel(point: UsageValuePoint, range: StatsRange, formatted: FormattedDateTimePreferences?): String {
+    if (formatted == null) {
+        // Fallback to default formatting if preferences not yet loaded
+        return formatBottomLabelLegacy(point, range, "24H")
+    }
+    
+    return when (range) {
+        StatsRange.Day -> formatted.formatHour(point.bucketStartUtc)
+        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> formatted.formatShortDate(point.bucketStartUtc)
+    }
+}
+
+/**
+ * Legacy bottom label formatter for backward compatibility.
  * @param point UsageValuePoint with local time timestamp
  * @param range The stats range type
  * @param timeFormat User's time format preference ("12H" or "24H")
  */
-fun formatBottomLabel(point: UsageValuePoint, range: StatsRange, timeFormat: String): String {
+@Deprecated("Use formatBottomLabel with FormattedDateTimePreferences instead")
+fun formatBottomLabelLegacy(point: UsageValuePoint, range: StatsRange, timeFormat: String): String {
     val instant = Instant.ofEpochMilli(point.bucketStartUtc)
     val zonedDateTime = instant.atZone(ZoneId.systemDefault())
 

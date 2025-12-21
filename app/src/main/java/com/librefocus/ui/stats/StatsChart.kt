@@ -112,7 +112,7 @@ fun UsageChartCard(
     usagePoints: List<UsageValuePoint>,
     metric: StatsMetric,
     range: StatsRange,
-    timeFormat: String = "24H"
+    formatted: com.librefocus.utils.FormattedDateTimePreferences? = null
 ) {
     val chartModelProducer = remember { CartesianChartModelProducer() }
     val yValues = remember(usagePoints, metric) {
@@ -123,9 +123,9 @@ fun UsageChartCard(
             }
         }
     }
-    val bottomLabels = remember(usagePoints, range, timeFormat) {
+    val bottomLabels = remember(usagePoints, range, formatted) {
         usagePoints.map { point ->
-            formatBottomLabel(point, range, timeFormat)
+            formatBottomLabel(point, range, formatted)
         }
     }
     val columnThickness = remember(usagePoints.size) {
@@ -180,7 +180,7 @@ fun UsageChartCard(
         }
     }
 
-    val markerValueFormatter = remember(usagePoints, metric, range) {
+    val markerValueFormatter = remember(usagePoints, metric, range, formatted) {
         DefaultCartesianMarker.ValueFormatter { _, targets ->
             val index = targets.firstOrNull()?.x?.roundToInt() ?: return@ValueFormatter ""
             val point = usagePoints.getOrNull(index) ?: return@ValueFormatter ""
@@ -188,7 +188,7 @@ fun UsageChartCard(
                 StatsMetric.ScreenTime -> formatDuration(point.totalUsageMillis)
                 StatsMetric.Opens -> "${point.totalLaunchCount} opens"
             }
-            val rangeText = point.markerRangeLabel(range)
+            val rangeText = point.markerRangeLabel(range, formatted)
             "$valueText\n$rangeText"
         }
     }
@@ -239,13 +239,27 @@ fun UsageChartCard(
     }
 }
 
-private fun UsageValuePoint.markerRangeLabel(range: StatsRange): String {
-    val zone = java.time.ZoneId.systemDefault()
-    val start = java.time.Instant.ofEpochMilli(bucketStartUtc).atZone(zone)
-    val end = start.plusHours(range.markerBucketDurationHours())
+private fun UsageValuePoint.markerRangeLabel(
+    range: StatsRange,
+    formatted: com.librefocus.utils.FormattedDateTimePreferences?
+): String {
+    if (formatted == null) {
+        // Fallback to system default
+        val zone = java.time.ZoneId.systemDefault()
+        val start = java.time.Instant.ofEpochMilli(bucketStartUtc).atZone(zone)
+        val end = start.plusHours(range.markerBucketDurationHours())
+        return when (range) {
+            StatsRange.Day -> "${markerHourFormatterFallback.format(start)} - ${markerHourFormatterFallback.format(end)}"
+            StatsRange.Week, StatsRange.Month, StatsRange.Custom -> "${markerDayFormatterFallback.format(start)} - ${markerDayFormatterFallback.format(end)}"
+        }
+    }
+    
+    val endMillis = bucketStartUtc + java.util.concurrent.TimeUnit.HOURS.toMillis(range.markerBucketDurationHours())
     return when (range) {
-        StatsRange.Day -> "${markerHourFormatter.format(start)} - ${markerHourFormatter.format(end)}"
-        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> "${markerDayFormatter.format(start)} - ${markerDayFormatter.format(end)}"
+        StatsRange.Day -> formatted.formatHourRange(bucketStartUtc, endMillis)
+        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> {
+            "${formatted.formatShortDate(bucketStartUtc)} - ${formatted.formatShortDate(endMillis)}"
+        }
     }
 }
 
@@ -256,8 +270,9 @@ private fun StatsRange.markerBucketDurationHours(): Long {
     }
 }
 
-private val markerHourFormatter: java.time.format.DateTimeFormatter =
+// Fallback formatters for when preferences are not yet loaded
+private val markerHourFormatterFallback: java.time.format.DateTimeFormatter =
     java.time.format.DateTimeFormatter.ofPattern("HH:mm")
 
-private val markerDayFormatter: java.time.format.DateTimeFormatter =
+private val markerDayFormatterFallback: java.time.format.DateTimeFormatter =
     java.time.format.DateTimeFormatter.ofPattern("dd MMM")
