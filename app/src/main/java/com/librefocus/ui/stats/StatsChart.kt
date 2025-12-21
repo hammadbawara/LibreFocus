@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -111,11 +112,10 @@ internal fun rememberMarker(
 fun UsageChartCard(
     usagePoints: List<UsageValuePoint>,
     metric: StatsMetric,
-    range: StatsRange
+    range: StatsRange,
+    formatted: com.librefocus.utils.FormattedDateTimePreferences? = null
 ) {
     val chartModelProducer = remember { CartesianChartModelProducer() }
-    val haptics = LocalHapticFeedback.current
-    var lastHighlightedIndex by remember { mutableStateOf<Int?>(null) }
     val yValues = remember(usagePoints, metric) {
         usagePoints.map { point ->
             when (metric) {
@@ -124,9 +124,9 @@ fun UsageChartCard(
             }
         }
     }
-    val bottomLabels = remember(usagePoints, range) {
+    val bottomLabels = remember(usagePoints, range, formatted) {
         usagePoints.map { point ->
-            formatBottomLabel(point, range)
+            formatBottomLabel(point, range, formatted)
         }
     }
     val columnThickness = remember(usagePoints.size) {
@@ -181,7 +181,7 @@ fun UsageChartCard(
         }
     }
 
-    val markerValueFormatter = remember(usagePoints, metric, range) {
+    val markerValueFormatter = remember(usagePoints, metric, range, formatted) {
         DefaultCartesianMarker.ValueFormatter { _, targets ->
             val index = targets.firstOrNull()?.x?.roundToInt() ?: return@ValueFormatter ""
             val point = usagePoints.getOrNull(index) ?: return@ValueFormatter ""
@@ -189,36 +189,11 @@ fun UsageChartCard(
                 StatsMetric.ScreenTime -> formatDuration(point.totalUsageMillis)
                 StatsMetric.Opens -> "${point.totalLaunchCount} opens"
             }
-            val rangeText = point.markerRangeLabel(range)
-            "$valueText\n$rangeText"
+            val timeLabel = point.markerTimeLabel(range, formatted)
+            "$valueText – $timeLabel"
         }
     }
     val marker = rememberMarker(valueFormatter = markerValueFormatter)
-
-    // For enabling haptics
-//    val markerVisibilityListener = remember(haptics) {
-//        object : CartesianMarkerVisibilityListener {
-//            override fun onShown(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
-//                maybeTriggerHaptics(targets)
-//            }
-//
-//            override fun onUpdated(marker: CartesianMarker, targets: List<CartesianMarker.Target>) {
-//                maybeTriggerHaptics(targets)
-//            }
-//
-//            override fun onHidden(marker: CartesianMarker) {
-//                lastHighlightedIndex = null
-//            }
-//
-//            private fun maybeTriggerHaptics(targets: List<CartesianMarker.Target>) {
-//                val index = targets.firstOrNull()?.x?.roundToInt()
-//                if (index != null && index != lastHighlightedIndex) {
-//                    lastHighlightedIndex = index
-//                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-//                }
-//            }
-//        }
-//    }
 
 
     val chart = rememberCartesianChart(
@@ -231,48 +206,65 @@ fun UsageChartCard(
             guideline = null
         ),
         marker = marker,
-        //markerVisibilityListener = markerVisibilityListener,
         markerController = CartesianMarkerController.ShowOnPress
     )
     val vicoTheme = rememberM3VicoTheme()
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors()
-    ) {
-        Column(
+    // Chart only - no UI decorations
+    ProvideVicoTheme(theme = vicoTheme) {
+        CartesianChartHost(
+            chart = chart,
+            modelProducer = chartModelProducer,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = metric.displayName(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            ProvideVicoTheme(theme = vicoTheme) {
-                CartesianChartHost(
-                    chart = chart,
-                    modelProducer = chartModelProducer,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    scrollState = scrollState,
-                    consumeMoveEvents = true
-                )
-            }
-        }
+                .height(200.dp),
+            scrollState = scrollState,
+            consumeMoveEvents = true
+        )
     }
 }
 
-private fun UsageValuePoint.markerRangeLabel(range: StatsRange): String {
-    val zone = java.time.ZoneId.systemDefault()
-    val start = java.time.Instant.ofEpochMilli(bucketStartUtc).atZone(zone)
-    val end = start.plusHours(range.markerBucketDurationHours())
+private fun UsageValuePoint.markerTimeLabel(
+    range: StatsRange,
+    formatted: com.librefocus.utils.FormattedDateTimePreferences?
+): String {
+    if (formatted == null) {
+        // Fallback to system default
+        val zone = java.time.ZoneId.systemDefault()
+        val start = java.time.Instant.ofEpochMilli(bucketStartUtc).atZone(zone)
+        return when (range) {
+            StatsRange.Day -> markerHourFormatterFallback.format(start)
+            StatsRange.Week, StatsRange.Month, StatsRange.Custom -> markerDayFormatterFallback.format(start)
+        }
+    }
+    
     return when (range) {
-        StatsRange.Day -> "${markerHourFormatter.format(start)} - ${markerHourFormatter.format(end)}"
-        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> "${markerDayFormatter.format(start)} - ${markerDayFormatter.format(end)}"
+        StatsRange.Day -> formatted.formatTime(bucketStartUtc)
+        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> formatted.formatDate(bucketStartUtc)
+    }
+}
+
+private fun UsageValuePoint.markerRangeLabel(
+    range: StatsRange,
+    formatted: com.librefocus.utils.FormattedDateTimePreferences?
+): String {
+    if (formatted == null) {
+        // Fallback to system default
+        val zone = java.time.ZoneId.systemDefault()
+        val start = java.time.Instant.ofEpochMilli(bucketStartUtc).atZone(zone)
+        val end = start.plusHours(range.markerBucketDurationHours())
+        return when (range) {
+            StatsRange.Day -> "${markerHourFormatterFallback.format(start)} - ${markerHourFormatterFallback.format(end)}"
+            StatsRange.Week, StatsRange.Month, StatsRange.Custom -> "${markerDayFormatterFallback.format(start)} - ${markerDayFormatterFallback.format(end)}"
+        }
+    }
+    
+    val endMillis = bucketStartUtc + java.util.concurrent.TimeUnit.HOURS.toMillis(range.markerBucketDurationHours())
+    return when (range) {
+        StatsRange.Day -> formatted.formatHourRange(bucketStartUtc, endMillis)
+        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> {
+            "${formatted.formatShortDate(bucketStartUtc)} - ${formatted.formatShortDate(endMillis)}"
+        }
     }
 }
 
@@ -283,8 +275,9 @@ private fun StatsRange.markerBucketDurationHours(): Long {
     }
 }
 
-private val markerHourFormatter: java.time.format.DateTimeFormatter =
-    java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+// Fallback formatters for when preferences are not yet loaded
+private val markerHourFormatterFallback: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("h:mm a")
 
-private val markerDayFormatter: java.time.format.DateTimeFormatter =
-    java.time.format.DateTimeFormatter.ofPattern("dd MMM")
+private val markerDayFormatterFallback: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy")

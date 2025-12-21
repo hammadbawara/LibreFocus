@@ -14,13 +14,22 @@ data class StatsUiState(
     val usagePoints: List<UsageValuePoint> = emptyList(),
     val appUsage: List<AppUsageData> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    // Display values for total and average (pre-calculated in ViewModel)
+    val totalDisplayValue: String = "0m",
+    val totalDisplayLabel: String = "Total",
+    val averageDisplayValue: String = "0m",
+    val averageDisplayLabel: String = "Avg per hour"
 )
 
+/**
+ * Represents the time period for statistics display.
+ * Times are stored in UTC for data querying but are presented to users in their local timezone.
+ */
 data class StatsPeriodState(
-    val currentStartUtc: Long,
-    val currentEndUtc: Long,
-    val label: String
+    val startUtc: Long,  // UTC timestamp for period start
+    val endUtc: Long,    // UTC timestamp for period end (exclusive)
+    val label: String    // Formatted label in user's local time
 )
 
 enum class StatsMetric {

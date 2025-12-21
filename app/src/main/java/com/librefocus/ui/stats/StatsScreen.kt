@@ -4,9 +4,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,7 +54,7 @@ fun StatsScreen(
     val range by viewModel.range.collectAsStateWithLifecycle()
     val metric by viewModel.metric.collectAsStateWithLifecycle()
     val period by viewModel.periodState.collectAsStateWithLifecycle()
-
+    val formattedPrefs by viewModel.formattedPreferences.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -65,8 +67,8 @@ fun StatsScreen(
 
     if (showCustomRangePicker) {
         CustomRangePickerDialog(
-            initialStartDate = period.currentStartUtc,
-            initialEndDate = period.currentEndUtc,
+            initialStartDate = period.startUtc,
+            initialEndDate = period.endUtc,
             onDismiss = { showCustomRangePicker = false },
             onConfirm = { start, end ->
                 viewModel.onCustomRangeSelected(start, end)
@@ -119,10 +121,25 @@ fun StatsScreen(
                 }
 
                 item {
+                    // Consume pre-calculated display values from ViewModel state
+                    StatsTotalAndAverage(
+                        totalValue = uiState.totalDisplayValue,
+                        totalLabel = uiState.totalDisplayLabel,
+                        averageValue = uiState.averageDisplayValue,
+                        averageLabel = uiState.averageDisplayLabel
+                    )
+                }
+                
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                item {
                     UsageChartCard(
                         usagePoints = uiState.usagePoints,
                         metric = metric,
-                        range = range
+                        range = range,
+                        formatted = formattedPrefs
                     )
                 }
 
@@ -136,7 +153,13 @@ fun StatsScreen(
                 }
 
                 item {
-                    StatsSummarySection(uiState)
+                    // Display only unlocks in summary - screen time now shown above chart
+                    if (uiState.totalUnlocks > 0) {
+                        SummaryCard(
+                            title = stringResource(id = R.string.stats_total_unlocks_title),
+                            value = uiState.totalUnlocks.toString()
+                        )
+                    }
                 }
 
                 item {
