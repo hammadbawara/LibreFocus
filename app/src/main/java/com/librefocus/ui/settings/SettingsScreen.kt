@@ -21,10 +21,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -65,12 +65,12 @@ fun SettingsScreen(
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var showTimeZoneDialog by remember { mutableStateOf(false) }
 
-    val topAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
 
     AppScaffold(
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = { Text("Settings") },
                 scrollBehavior = topAppBarScrollBehavior
 //                navigationIcon = {
@@ -92,7 +92,7 @@ fun SettingsScreen(
         },
         topAppBarScrollBehavior = topAppBarScrollBehavior,
         bottomBarScrollBehavior = bottomBarScrollBehavior
-    ) { paddingValues ->
+    ) { paddingValues, scrollModifier ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

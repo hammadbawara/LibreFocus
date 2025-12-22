@@ -15,6 +15,7 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.NavController
 import com.librefocus.ui.navigation.Screen
 
@@ -30,7 +31,7 @@ import com.librefocus.ui.navigation.Screen
  * @param bottomBarScrollBehavior Optional scroll behavior for the bottom bar
  * @param showBottomBar Whether to show the bottom navigation bar (default: true)
  * @param contentWindowInsets Window insets for the content
- * @param content The main content of the screen
+ * @param content The main content of the screen. Receives paddingValues and scroll connection modifier
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,8 +44,17 @@ fun AppScaffold(
     bottomBarScrollBehavior: BottomAppBarScrollBehavior? = null,
     showBottomBar: Boolean = true,
     contentWindowInsets: WindowInsets = WindowInsets(0, 0, 0, 0),
-    content: @Composable (PaddingValues) -> Unit
+    content: @Composable (PaddingValues, Modifier) -> Unit
 ) {
+    // Create a modifier that combines both scroll behaviors
+    var scrollModifier = Modifier
+    if (topAppBarScrollBehavior != null) {
+        scrollModifier = scrollModifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection) as Modifier.Companion
+    }
+    if (bottomBarScrollBehavior != null) {
+        scrollModifier = scrollModifier.nestedScroll(bottomBarScrollBehavior.nestedScrollConnection) as Modifier.Companion
+    }
+    
     Scaffold(
         modifier = modifier,
         topBar = topBar,
@@ -52,7 +62,7 @@ fun AppScaffold(
         snackbarHost = snackbarHost,
         contentWindowInsets = contentWindowInsets
     ) { paddingValues ->
-        content(paddingValues)
+        content(paddingValues, scrollModifier)
     }
 }
 

@@ -10,11 +10,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,7 +22,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,12 +64,12 @@ fun StatsScreen(
         }
     }
 
-    val topAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
     
     AppScaffold(
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = { Text(text = stringResource(id = R.string.stats_title)) },
                 scrollBehavior = topAppBarScrollBehavior,
             )
@@ -86,7 +85,7 @@ fun StatsScreen(
         topAppBarScrollBehavior = topAppBarScrollBehavior,
         bottomBarScrollBehavior = bottomBarScrollBehavior,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
+    ) { paddingValues, scrollModifier ->
         ShowLoading (
             isLoading = isLoading,
         ) {
@@ -96,7 +95,7 @@ fun StatsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                    .then(scrollModifier),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {

@@ -17,10 +17,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,7 +29,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,11 +71,11 @@ fun AppDetailScreen(
         }
     }
 
-    val topAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     AppScaffold(
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = {
                     Row {
                         appIcon?.let { icon ->
@@ -112,7 +111,7 @@ fun AppDetailScreen(
         topAppBarScrollBehavior = topAppBarScrollBehavior,
         showBottomBar = false,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
+    ) { paddingValues, scrollModifier ->
         ShowLoading(
             isLoading = uiState.isLoading,
         ) {
@@ -122,7 +121,7 @@ fun AppDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                    .then(scrollModifier),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
