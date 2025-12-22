@@ -13,11 +13,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.librefocus.utils.FormattedDateTimePreferences
 import java.util.concurrent.TimeUnit
-
-
 
 
 @Composable

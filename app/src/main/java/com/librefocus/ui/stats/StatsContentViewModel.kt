@@ -3,7 +3,6 @@ package com.librefocus.ui.stats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.librefocus.data.repository.UsageTrackingRepository
-import com.librefocus.models.AppUsageData
 import com.librefocus.models.UsageValuePoint
 import com.librefocus.utils.DateTimeFormatterManager
 import com.librefocus.utils.FormattedDateTimePreferences
@@ -18,7 +17,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
-import kotlin.text.compareTo
 
 enum class StatsMetric {
     ScreenTime,

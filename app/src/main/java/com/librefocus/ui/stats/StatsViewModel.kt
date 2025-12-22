@@ -4,20 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.librefocus.data.repository.UsageTrackingRepository
 import com.librefocus.models.AppUsageData
-import com.librefocus.models.UsageValuePoint
 import com.librefocus.utils.DateTimeFormatterManager
-import com.librefocus.utils.FormattedDateTimePreferences
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZonedDateTime
-import java.util.concurrent.TimeUnit
+
 data class StatsUiState(
     val totalUnlocks: Int = 0,
     val appUsage: List<AppUsageData> = emptyList(),

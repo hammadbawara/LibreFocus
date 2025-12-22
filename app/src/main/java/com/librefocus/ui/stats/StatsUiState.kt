@@ -1,9 +1,5 @@
 package com.librefocus.ui.stats
 
-import com.librefocus.models.AppUsageData
-import com.librefocus.models.UsageValuePoint
-
-
 
 /**
  * Represents the time period for statistics display.
