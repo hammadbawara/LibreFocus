@@ -47,12 +47,16 @@ fun AppScaffold(
     content: @Composable (PaddingValues, Modifier) -> Unit
 ) {
     // Create a modifier that combines both scroll behaviors
-    var scrollModifier = Modifier
-    if (topAppBarScrollBehavior != null) {
-        scrollModifier = scrollModifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection) as Modifier.Companion
-    }
-    if (bottomBarScrollBehavior != null) {
-        scrollModifier = scrollModifier.nestedScroll(bottomBarScrollBehavior.nestedScrollConnection) as Modifier.Companion
+    val scrollModifier: Modifier = when {
+        topAppBarScrollBehavior != null && bottomBarScrollBehavior != null ->
+            Modifier
+                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                .nestedScroll(bottomBarScrollBehavior.nestedScrollConnection)
+        topAppBarScrollBehavior != null ->
+            Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+        bottomBarScrollBehavior != null ->
+            Modifier.nestedScroll(bottomBarScrollBehavior.nestedScrollConnection)
+        else -> Modifier
     }
     
     Scaffold(
