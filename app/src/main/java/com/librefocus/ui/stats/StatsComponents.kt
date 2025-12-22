@@ -13,20 +13,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -143,26 +138,26 @@ fun StatsPeriodNavigator(
     }
 }
 
-@Composable
-fun StatsSummarySection(uiState: StatsUiState) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        SummaryCard(
-            title = stringResource(id = R.string.stats_total_usage_title),
-            value = formatDuration(uiState.totalUsageMillis)
-        )
-        SummaryCard(
-            title = stringResource(id = R.string.stats_average_session_title),
-            value = formatDuration(uiState.averageSessionMillis)
-        )
-        SummaryCard(
-            title = stringResource(id = R.string.stats_total_unlocks_title),
-            value = uiState.totalUnlocks.toString()
-        )
-    }
-}
+//@Composable
+//fun StatsSummarySection(uiState: StatsUiState) {
+//    Column(
+//        modifier = Modifier.fillMaxWidth(),
+//        verticalArrangement = Arrangement.spacedBy(12.dp)
+//    ) {
+//        SummaryCard(
+//            title = stringResource(id = R.string.stats_total_usage_title),
+//            value = formatDuration(uiState.totalUsageMillis)
+//        )
+//        SummaryCard(
+//            title = stringResource(id = R.string.stats_average_session_title),
+//            value = formatDuration(uiState.averageSessionMillis)
+//        )
+//        SummaryCard(
+//            title = stringResource(id = R.string.stats_total_unlocks_title),
+//            value = uiState.totalUnlocks.toString()
+//        )
+//    }
+//}
 
 @Composable
 fun SummaryCard(
@@ -196,7 +191,8 @@ fun SummaryCard(
 @Composable
 fun AppUsageListItem(
     appUsage: AppUsageData,
-    totalUsageMillis: Long = 0L
+    totalUsageMillis: Long = 0L,
+    onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var appIcon by remember { mutableStateOf<Drawable?>(null) }
@@ -214,7 +210,8 @@ fun AppUsageListItem(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors()
+        colors = CardDefaults.cardColors(),
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier

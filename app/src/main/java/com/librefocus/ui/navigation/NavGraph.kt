@@ -1,14 +1,6 @@
 package com.librefocus.ui.navigation
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -16,15 +8,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.librefocus.R
+import androidx.navigation.navArgument
 import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.LimitsScreen
 import com.librefocus.ui.settings.SettingsScreen
+import com.librefocus.ui.stats.AppDetailScreen
 import com.librefocus.ui.stats.StatsScreen
 
 @Composable
@@ -67,7 +60,11 @@ fun NavGraph() {
                 HomeScreen()
             }
             composable(Screen.Stats.route) {
-                StatsScreen()
+                StatsScreen(
+                    onAppClick = { packageName ->
+                        navController.navigate("app_detail/$packageName")
+                    }
+                )
             }
             composable(Screen.Limits.route) {
                 LimitsScreen()
@@ -83,6 +80,18 @@ fun NavGraph() {
                             restoreState = true
                         }
                     }
+                )
+            }
+            composable(
+                route = "app_detail/{packageName}",
+                arguments = listOf(
+                    navArgument("packageName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val packageName = backStackEntry.arguments?.getString("packageName") ?: ""
+                AppDetailScreen(
+                    packageName = packageName,
+                    onBackClick = { navController.navigateUp() }
                 )
             }
         }

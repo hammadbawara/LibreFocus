@@ -1,40 +1,26 @@
 package com.librefocus.ui.stats
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
@@ -42,39 +28,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.librefocus.R
+import com.librefocus.ui.common.ShowLoading
 import org.koin.androidx.compose.koinViewModel
-import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(
-    viewModel: StatsViewModel = koinViewModel()
+    viewModel: StatsViewModel = koinViewModel(),
+    onAppClick: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val range by viewModel.range.collectAsStateWithLifecycle()
-    val metric by viewModel.metric.collectAsStateWithLifecycle()
-    val period by viewModel.periodState.collectAsStateWithLifecycle()
-    val formattedPrefs by viewModel.formattedPreferences.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val statsContentViewModel: StatsContentViewModel = koinViewModel()
+    val period by statsContentViewModel.periodState.collectAsStateWithLifecycle()
+    val range by statsContentViewModel.range.collectAsStateWithLifecycle()
+    val metric by statsContentViewModel.metric.collectAsStateWithLifecycle()
+    val formattedPref by statsContentViewModel.formattedPreferences.collectAsStateWithLifecycle()
+    val statsContentUiState by statsContentViewModel.uiState.collectAsStateWithLifecycle()
+
+    val isLoading by remember(uiState.isLoading, statsContentUiState.isLoading) {
+        derivedStateOf { uiState.isLoading || statsContentUiState.isLoading }
+    }
+
+    LaunchedEffect(period) {
+        viewModel.refreshUsageStats(period)
+    }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
         }
-    }
-
-    var showCustomRangePicker by rememberSaveable { mutableStateOf(false) }
-
-    if (showCustomRangePicker) {
-        CustomRangePickerDialog(
-            initialStartDate = period.startUtc,
-            initialEndDate = period.endUtc,
-            onDismiss = { showCustomRangePicker = false },
-            onConfirm = { start, end ->
-                viewModel.onCustomRangeSelected(start, end)
-                showCustomRangePicker = false
-            }
-        )
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -89,7 +72,9 @@ fun StatsScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        ShowLoading (
+            isLoading = isLoading,
+        ) {
             val listState = rememberLazyListState()
             LazyColumn(
                 state = listState,
@@ -102,57 +87,6 @@ fun StatsScreen(
             ) {
 
                 item {
-                    StatsMetricSelector(
-                        selectedMetric = metric,
-                        onMetricSelected = viewModel::onMetricSelected
-                    )
-                }
-
-                item {
-                    StatsRangeSelector(
-                        selectedRange = range,
-                        onSelected = { selected ->
-                            when (selected) {
-                                StatsRange.Custom -> showCustomRangePicker = true
-                                else -> viewModel.onRangeSelected(selected)
-                            }
-                        }
-                    )
-                }
-
-                item {
-                    // Consume pre-calculated display values from ViewModel state
-                    StatsTotalAndAverage(
-                        totalValue = uiState.totalDisplayValue,
-                        totalLabel = uiState.totalDisplayLabel,
-                        averageValue = uiState.averageDisplayValue,
-                        averageLabel = uiState.averageDisplayLabel
-                    )
-                }
-                
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                item {
-                    UsageChartCard(
-                        usagePoints = uiState.usagePoints,
-                        metric = metric,
-                        range = range,
-                        formatted = formattedPrefs
-                    )
-                }
-
-                item {
-                    StatsPeriodNavigator(
-                        label = period.label,
-                        onPrevious = viewModel::onNavigatePrevious,
-                        onNext = viewModel::onNavigateNext,
-                        isNextEnabled = true
-                    )
-                }
-
-                item {
                     // Display only unlocks in summary - screen time now shown above chart
                     if (uiState.totalUnlocks > 0) {
                         SummaryCard(
@@ -160,6 +94,21 @@ fun StatsScreen(
                             value = uiState.totalUnlocks.toString()
                         )
                     }
+                }
+
+                item {
+                    StatsContent(
+                        uiState = statsContentUiState,
+                        range = range,
+                        metric = metric,
+                        period = period,
+                        formattedPrefs = formattedPref,
+                        onMetricSelected = statsContentViewModel::onMetricSelected,
+                        onRangeSelected = statsContentViewModel::onRangeSelected,
+                        onNavigateNext = statsContentViewModel::onNavigateNext,
+                        onNavigatePrevious = statsContentViewModel::onNavigatePrevious,
+                        onCustomRangeSelected = statsContentViewModel::onCustomRangeSelected,
+                    )
                 }
 
                 item {
@@ -177,7 +126,8 @@ fun StatsScreen(
                     ) { appUsage ->
                         AppUsageListItem(
                             appUsage = appUsage,
-                            totalUsageMillis = uiState.totalUsageMillis
+                            totalUsageMillis = statsContentUiState.totalUsageMillis,
+                            onClick = { onAppClick(appUsage.packageName) }
                         )
                     }
                 } else {
@@ -190,63 +140,7 @@ fun StatsScreen(
                     }
                 }
             }
-
-            AnimatedVisibility(
-                visible = uiState.isLoading,
-                modifier = Modifier.align(Alignment.TopCenter)
-            ) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 0.dp)
-                )
-            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CustomRangePickerDialog(
-    initialStartDate: Long,
-    initialEndDate: Long,
-    onDismiss: () -> Unit,
-    onConfirm: (Long, Long) -> Unit
-) {
-    val pickerState = rememberCustomDateRangeState(initialStartDate, initialEndDate)
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val start = pickerState.selectedStartDateMillis
-                    val end = pickerState.selectedEndDateMillis
-                    if (start != null && end != null) {
-                        onConfirm(start, end)
-                    } else {
-                        onDismiss()
-                    }
-                }
-            ) {
-                Text(text = stringResource(id = android.R.string.ok))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(id = android.R.string.cancel))
-            }
-        }
-    ) {
-        DateRangePicker(state = pickerState)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun rememberCustomDateRangeState(
-    initialStartDate: Long,
-    initialEndDate: Long
-) = androidx.compose.material3.rememberDateRangePickerState(
-    initialSelectedStartDateMillis = initialStartDate,
-    initialSelectedEndDateMillis = initialEndDate - TimeUnit.DAYS.toMillis(1)
-)

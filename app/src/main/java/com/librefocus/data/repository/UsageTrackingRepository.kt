@@ -1,6 +1,7 @@
 package com.librefocus.data.repository
 
 import android.util.Log
+import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
 import com.librefocus.data.local.database.dao.DailyDeviceUsageDao
@@ -11,7 +12,6 @@ import com.librefocus.data.local.database.entity.AppEntity
 import com.librefocus.data.local.database.entity.DailyDeviceUsageEntity
 import com.librefocus.data.local.database.entity.HourlyAppUsageEntity
 import com.librefocus.data.local.database.entity.SyncMetadataEntity
-import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.models.AppUsageData
 import com.librefocus.models.HourlyUsageData
 import com.librefocus.models.UsageValuePoint
@@ -241,6 +241,68 @@ class UsageTrackingRepository(
     ): List<UsageValuePoint> = withContext(Dispatchers.IO) {
         val buckets = mutableMapOf<Long, Pair<Long, Int>>()
         val usageEntries = hourlyAppUsageDao.getUsageInTimeRangeOnce(startUtc, endUtc)
+        usageEntries.forEach { entry ->
+            val bucketKey = roundToDayStart(entry.hourStartUtc)
+            if (bucketKey >= startUtc && bucketKey < endUtc) {
+                val current = buckets[bucketKey] ?: (0L to 0)
+                buckets[bucketKey] = (
+                    current.first + entry.usageDurationMillis to
+                    current.second + entry.launchCount
+                )
+            }
+        }
+        buckets.entries
+            .sortedBy { it.key }
+            .map { (bucketStart, totals) ->
+                UsageValuePoint(
+                    bucketStartUtc = bucketStart,
+                    totalUsageMillis = totals.first,
+                    totalLaunchCount = totals.second
+                )
+            }
+    }
+
+    /**
+     * Aggregates usage duration and launches for a specific app, grouped by hour.
+     */
+    suspend fun getAppUsageTotalsGroupedByHour(
+        packageName: String,
+        startUtc: Long,
+        endUtc: Long
+    ): List<UsageValuePoint> = withContext(Dispatchers.IO) {
+        val app = appDao.getAppByPackageName(packageName) ?: return@withContext emptyList()
+        val buckets = mutableMapOf<Long, Pair<Long, Int>>()
+        val usageEntries = hourlyAppUsageDao.getAppUsageInTimeRangeOnce(app.id, startUtc, endUtc)
+        usageEntries.forEach { entry ->
+            val bucketKey = roundToHourStart(entry.hourStartUtc)
+            val current = buckets[bucketKey] ?: (0L to 0)
+            buckets[bucketKey] = (
+                current.first + entry.usageDurationMillis to
+                current.second + entry.launchCount
+            )
+        }
+        buckets.entries
+            .sortedBy { it.key }
+            .map { (bucketStart, totals) ->
+                UsageValuePoint(
+                    bucketStartUtc = bucketStart,
+                    totalUsageMillis = totals.first,
+                    totalLaunchCount = totals.second
+                )
+            }
+    }
+
+    /**
+     * Aggregates usage duration and launches for a specific app, grouped by day.
+     */
+    suspend fun getAppUsageTotalsGroupedByDay(
+        packageName: String,
+        startUtc: Long,
+        endUtc: Long
+    ): List<UsageValuePoint> = withContext(Dispatchers.IO) {
+        val app = appDao.getAppByPackageName(packageName) ?: return@withContext emptyList()
+        val buckets = mutableMapOf<Long, Pair<Long, Int>>()
+        val usageEntries = hourlyAppUsageDao.getAppUsageInTimeRangeOnce(app.id, startUtc, endUtc)
         usageEntries.forEach { entry ->
             val bucketKey = roundToDayStart(entry.hourStartUtc)
             if (bucketKey >= startUtc && bucketKey < endUtc) {
