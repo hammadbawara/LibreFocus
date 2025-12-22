@@ -8,13 +8,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.LimitsScreen
 import com.librefocus.ui.settings.SettingsScreen
+import com.librefocus.ui.stats.AppDetailScreen
 import com.librefocus.ui.stats.StatsScreen
 
 @Composable
@@ -57,7 +60,11 @@ fun NavGraph() {
                 HomeScreen()
             }
             composable(Screen.Stats.route) {
-                StatsScreen()
+                StatsScreen(
+                    onAppClick = { packageName ->
+                        navController.navigate("app_detail/$packageName")
+                    }
+                )
             }
             composable(Screen.Limits.route) {
                 LimitsScreen()
@@ -73,6 +80,18 @@ fun NavGraph() {
                             restoreState = true
                         }
                     }
+                )
+            }
+            composable(
+                route = "app_detail/{packageName}",
+                arguments = listOf(
+                    navArgument("packageName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val packageName = backStackEntry.arguments?.getString("packageName") ?: ""
+                AppDetailScreen(
+                    packageName = packageName,
+                    onBackClick = { navController.navigateUp() }
                 )
             }
         }

@@ -34,7 +34,8 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(
-    viewModel: StatsViewModel = koinViewModel()
+    viewModel: StatsViewModel = koinViewModel(),
+    onAppClick: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -125,7 +126,8 @@ fun StatsScreen(
                     ) { appUsage ->
                         AppUsageListItem(
                             appUsage = appUsage,
-                            totalUsageMillis = statsContentUiState.totalUsageMillis
+                            totalUsageMillis = statsContentUiState.totalUsageMillis,
+                            onClick = { onAppClick(appUsage.packageName) }
                         )
                     }
                 } else {

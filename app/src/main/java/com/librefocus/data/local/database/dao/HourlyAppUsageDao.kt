@@ -44,6 +44,17 @@ interface HourlyAppUsageDao {
     
     @Query("""
         SELECT * FROM hourly_app_usage 
+        WHERE appId = :appId AND hourStartUtc >= :startUtc AND hourStartUtc < :endUtc
+        ORDER BY hourStartUtc ASC
+    """)
+    suspend fun getAppUsageInTimeRangeOnce(
+        appId: Int,
+        startUtc: Long,
+        endUtc: Long
+    ): List<HourlyAppUsageEntity>
+    
+    @Query("""
+        SELECT * FROM hourly_app_usage 
         WHERE appId = :appId AND hourStartUtc = :hourStartUtc
         LIMIT 1
     """)

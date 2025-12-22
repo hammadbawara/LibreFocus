@@ -45,7 +45,8 @@ data class StatsContentUiState(
 
 class StatsContentViewModel(
     private val usageRepository: UsageTrackingRepository,
-    private val dateTimeFormatterManager: DateTimeFormatterManager
+    private val dateTimeFormatterManager: DateTimeFormatterManager,
+    private val packageName: String? = null // null = all apps, non-null = specific app
 ): ViewModel() {
 
     private val _metric = MutableStateFlow(StatsMetric.ScreenTime)
@@ -236,15 +237,32 @@ class StatsContentViewModel(
                 val metric = _metric.value
 
                 // Query data from repository using UTC timestamps
-                val rawUsagePoints = when (_range.value) {
-                    StatsRange.Day -> usageRepository.getUsageTotalsGroupedByHour(
-                        period.startUtc,
-                        period.endUtc
-                    )
-                    StatsRange.Week, StatsRange.Month, StatsRange.Custom -> usageRepository.getUsageTotalsGroupedByDay(
-                        period.startUtc,
-                        period.endUtc
-                    )
+                val rawUsagePoints = if (packageName != null) {
+                    // Query for specific app
+                    when (_range.value) {
+                        StatsRange.Day -> usageRepository.getAppUsageTotalsGroupedByHour(
+                            packageName,
+                            period.startUtc,
+                            period.endUtc
+                        )
+                        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> usageRepository.getAppUsageTotalsGroupedByDay(
+                            packageName,
+                            period.startUtc,
+                            period.endUtc
+                        )
+                    }
+                } else {
+                    // Query for all apps
+                    when (_range.value) {
+                        StatsRange.Day -> usageRepository.getUsageTotalsGroupedByHour(
+                            period.startUtc,
+                            period.endUtc
+                        )
+                        StatsRange.Week, StatsRange.Month, StatsRange.Custom -> usageRepository.getUsageTotalsGroupedByDay(
+                            period.startUtc,
+                            period.endUtc
+                        )
+                    }
                 }
 
                 // Convert UTC data points to local time for UI display
