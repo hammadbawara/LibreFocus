@@ -2,6 +2,7 @@ package com.librefocus.ui.common
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.BottomAppBarScrollBehavior
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -94,31 +95,35 @@ fun AppBottomNavigationBar(
     scrollBehavior: BottomAppBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
 ) {
     val items = Screen.entries
-    
-    NavigationBar {
-        items.forEach { destination ->
-            NavigationBarItem(
-                selected = currentRoute == destination.route,
-                onClick = {
-                    if (currentRoute != destination.route) {
-                        navController.navigate(destination.route) {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+
+    BottomAppBar(
+        scrollBehavior = scrollBehavior
+    ) {
+        NavigationBar {
+            items.forEach { destination ->
+                NavigationBarItem(
+                    selected = currentRoute == destination.route,
+                    onClick = {
+                        if (currentRoute != destination.route) {
+                            navController.navigate(destination.route) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
-                    }
-                },
-                icon = { 
-                    if (currentRoute == destination.route) {
-                        destination.selectedIcon()
-                    } else {
-                        destination.unselectedIcon()
-                    }
-                },
-                label = { Text(text = destination.label) }
-            )
+                    },
+                    icon = {
+                        if (currentRoute == destination.route) {
+                            destination.selectedIcon()
+                        } else {
+                            destination.unselectedIcon()
+                        }
+                    },
+                    label = { Text(text = destination.label) }
+                )
+            }
         }
     }
 }
