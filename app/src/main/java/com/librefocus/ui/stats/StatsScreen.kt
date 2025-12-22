@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -27,13 +27,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.librefocus.R
+import com.librefocus.ui.common.AppBottomNavigationBar
+import com.librefocus.ui.common.AppScaffold
 import com.librefocus.ui.common.ShowLoading
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(
+    navController: NavController,
+    currentRoute: String?,
     viewModel: StatsViewModel = koinViewModel(),
     onAppClick: (String) -> Unit = {}
 ) {
@@ -60,16 +65,26 @@ fun StatsScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-
-    Scaffold(
+    val topAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
+    
+    AppScaffold(
         topBar = {
             TopAppBar(
                 title = { Text(text = stringResource(id = R.string.stats_title)) },
-                scrollBehavior = scrollBehavior,
+                scrollBehavior = topAppBarScrollBehavior,
+            )
+        },
+        bottomBar = {
+            AppBottomNavigationBar(
+                navController = navController,
+                currentRoute = currentRoute,
+                scrollBehavior = bottomBarScrollBehavior
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        topAppBarScrollBehavior = topAppBarScrollBehavior,
+        bottomBarScrollBehavior = bottomBarScrollBehavior,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         ShowLoading (
@@ -81,7 +96,7 @@ fun StatsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {

@@ -16,15 +16,16 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,16 +37,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.librefocus.models.DateFormat
 import com.librefocus.models.TimeFormat
+import com.librefocus.ui.common.AppBottomNavigationBar
+import com.librefocus.ui.common.AppScaffold
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    navController: NavController,
+    currentRoute: String?,
     viewModel: SettingsViewModel = koinViewModel(),
     onBackClick: () -> Unit
 ) {
@@ -59,10 +65,14 @@ fun SettingsScreen(
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var showTimeZoneDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
+    val topAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
+
+    AppScaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
+                scrollBehavior = topAppBarScrollBehavior
 //                navigationIcon = {
 //                    IconButton(onClick = onBackClick) {
 //                        Icon(
@@ -72,7 +82,16 @@ fun SettingsScreen(
 //                    }
 //                }
             )
-        }
+        },
+        bottomBar = {
+            AppBottomNavigationBar(
+                navController = navController,
+                currentRoute = currentRoute,
+                scrollBehavior = bottomBarScrollBehavior
+            )
+        },
+        topAppBarScrollBehavior = topAppBarScrollBehavior,
+        bottomBarScrollBehavior = bottomBarScrollBehavior
     ) { paddingValues ->
         Column(
             modifier = Modifier

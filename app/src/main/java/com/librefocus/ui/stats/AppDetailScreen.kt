@@ -17,7 +17,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -35,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.librefocus.ui.common.AppScaffold
 import com.librefocus.ui.common.ShowLoading
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -72,9 +72,9 @@ fun AppDetailScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val topAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    Scaffold(
+    AppScaffold(
         topBar = {
             TopAppBar(
                 title = {
@@ -105,10 +105,12 @@ fun AppDetailScreen(
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior,
+                scrollBehavior = topAppBarScrollBehavior,
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        topAppBarScrollBehavior = topAppBarScrollBehavior,
+        showBottomBar = false,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         ShowLoading(
@@ -120,7 +122,7 @@ fun AppDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
