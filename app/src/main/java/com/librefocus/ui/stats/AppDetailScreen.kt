@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -77,29 +78,30 @@ fun AppDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = appName,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row {
+                        appIcon?.let { icon ->
+                            AppIconImage(
+                                drawable = icon,
+                                contentDescription = appName,
+                                modifier = Modifier
+                                    .padding(end = 16.dp)
+                                    .size(32.dp)
+                            )
+                        }
+
+                        Text(
+                            text = appName,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
-                        )
-                    }
-                },
-                actions = {
-                    // App icon in top bar
-                    appIcon?.let { icon ->
-                        AppIconImage(
-                            drawable = icon,
-                            contentDescription = appName,
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .size(32.dp)
                         )
                     }
                 },
