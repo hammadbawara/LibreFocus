@@ -138,26 +138,26 @@ fun StatsPeriodNavigator(
     }
 }
 
-@Composable
-fun StatsSummarySection(uiState: StatsUiState) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        SummaryCard(
-            title = stringResource(id = R.string.stats_total_usage_title),
-            value = formatDuration(uiState.totalUsageMillis)
-        )
-        SummaryCard(
-            title = stringResource(id = R.string.stats_average_session_title),
-            value = formatDuration(uiState.averageSessionMillis)
-        )
-        SummaryCard(
-            title = stringResource(id = R.string.stats_total_unlocks_title),
-            value = uiState.totalUnlocks.toString()
-        )
-    }
-}
+//@Composable
+//fun StatsSummarySection(uiState: StatsUiState) {
+//    Column(
+//        modifier = Modifier.fillMaxWidth(),
+//        verticalArrangement = Arrangement.spacedBy(12.dp)
+//    ) {
+//        SummaryCard(
+//            title = stringResource(id = R.string.stats_total_usage_title),
+//            value = formatDuration(uiState.totalUsageMillis)
+//        )
+//        SummaryCard(
+//            title = stringResource(id = R.string.stats_average_session_title),
+//            value = formatDuration(uiState.averageSessionMillis)
+//        )
+//        SummaryCard(
+//            title = stringResource(id = R.string.stats_total_unlocks_title),
+//            value = uiState.totalUnlocks.toString()
+//        )
+//    }
+//}
 
 @Composable
 fun SummaryCard(

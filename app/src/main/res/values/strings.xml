@@ -12,4 +12,5 @@
     <string name="stats_total_unlocks_title">Total unlocks</string>
     <string name="stats_app_usage_duration">%1$s</string>
     <string name="stats_app_usage_launches">%1$d opens</string>
+    <string name="loading">Loading</string>
 </resources>
