@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.librefocus.data.repository.UsageTrackingRepository
 import com.librefocus.models.AppUsageData
 import com.librefocus.utils.DateTimeFormatterManager
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -40,8 +39,6 @@ class StatsViewModel(
                     startUtc = period.startUtc,
                     endUtc = period.endUtc
                 ).sumOf { it.totalUnlocks }
-
-                delay(5000)
 
                 StatsUiState(
                     totalUnlocks = totalUnlocks,

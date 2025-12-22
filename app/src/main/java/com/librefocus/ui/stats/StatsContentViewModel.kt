@@ -6,7 +6,6 @@ import com.librefocus.data.repository.UsageTrackingRepository
 import com.librefocus.models.UsageValuePoint
 import com.librefocus.utils.DateTimeFormatterManager
 import com.librefocus.utils.FormattedDateTimePreferences
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -231,7 +230,6 @@ class StatsContentViewModel(
     private fun refreshData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            delay(5000)
             runCatching {
                 val period = _periodState.value  // Now guaranteed non-null
                 val metric = _metric.value
