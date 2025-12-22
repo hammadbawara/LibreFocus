@@ -13,14 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.QueryStats
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -31,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -90,39 +82,39 @@ fun AppFeaturesScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 3. Features List
+            // 3. Features List with Emojis
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp) // Reduced spacing to fit more items
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 FeatureItem(
-                    icon = Icons.Default.Smartphone,
+                    emoji = "📱",
                     text = "Track your app usage effortlessly"
                 )
                 FeatureItem(
-                    icon = Icons.Default.BarChart,
+                    emoji = "📊",
                     text = "Visualize daily & weekly patterns"
                 )
                 FeatureItem(
-                    icon = Icons.Default.QueryStats, // Magnifying glass with stats
+                    emoji = "🔍",
                     text = "Discover deeper app insights"
                 )
                 FeatureItem(
-                    icon = Icons.Default.Timer,
+                    emoji = "⏱️",
                     text = "Set usage limits & smart reminders"
                 )
                 FeatureItem(
-                    icon = Icons.Default.SmartToy, // Robot icon
+                    emoji = "🤖",
                     text = "Get guidance from your AI assistant"
                 )
                 FeatureItem(
-                    icon = Icons.Default.EmojiEvents, // Trophy icon
+                    emoji = "🏆",
                     text = "Stay motivated with achievements"
                 )
                 FeatureItem(
-                    icon = Icons.Default.Lock,
+                    emoji = "🔒",
                     text = "Privacy-first, your data stays secure"
                 )
             }
@@ -149,22 +141,21 @@ fun AppFeaturesScreen(
 }
 
 @Composable
-fun FeatureItem(icon: ImageVector, text: String) {
+fun FeatureItem(emoji: String, text: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(28.dp)
+        // Emoji rendered as Text to preserve original colors
+        Text(
+            text = emoji,
+            fontSize = 24.sp
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            fontSize = 18.sp
+            fontSize = 16.sp
         )
     }
 }
