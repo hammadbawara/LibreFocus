@@ -13,6 +13,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -46,6 +47,13 @@ fun AppScaffold(
     contentWindowInsets: WindowInsets = WindowInsets(0, 0, 0, 0),
     content: @Composable (PaddingValues, Modifier) -> Unit
 ) {
+    // Collapse the top app bar by default
+    LaunchedEffect(topAppBarScrollBehavior) {
+        topAppBarScrollBehavior?.state?.apply {
+            heightOffset = heightOffsetLimit
+        }
+    }
+    
     // Create a modifier that combines both scroll behaviors
     val scrollModifier: Modifier = when {
         topAppBarScrollBehavior != null && bottomBarScrollBehavior != null ->
