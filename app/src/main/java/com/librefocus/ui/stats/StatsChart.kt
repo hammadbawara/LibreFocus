@@ -117,10 +117,10 @@ fun UsageChartCard(
     }
     val columnThickness = remember(usagePoints.size) {
         when {
-            usagePoints.size <= 6 -> 20.dp
-            usagePoints.size <= 12 -> 14.dp
-            usagePoints.size <= 24 -> 10.dp
-            else -> 8.dp
+            usagePoints.size <= 6 -> 24.dp
+            usagePoints.size <= 12 -> 20.dp
+            usagePoints.size <= 24 -> 16.dp
+            else -> 12.dp
         }
     }
     val columnShape = remember {

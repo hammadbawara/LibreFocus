@@ -97,7 +97,7 @@ fun StatsScreen(
                     .padding(paddingValues)
                     .then(scrollModifier),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
 
                 item {

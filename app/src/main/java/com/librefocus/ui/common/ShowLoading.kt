@@ -1,15 +1,12 @@
 package com.librefocus.ui.common
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import com.librefocus.R
 
 @Composable
 fun ShowLoading(
@@ -21,20 +18,10 @@ fun ShowLoading(
         Box(
             modifier.fillMaxSize()
         ){
-            Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier,
-                )
-                Text(
-                    text = stringResource(id = R.string.loading)
-                )
-            }
+            LinearProgressIndicator(
+                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
+            )
         }
-
-    } else {
-        content()
     }
+    content()
 }
