@@ -42,7 +42,7 @@ data class StatsContentUiState(
     val errorMessage: String? = null,
 )
 
-class StatsContentViewModel(
+open class StatsContentViewModel(
     private val usageRepository: UsageTrackingRepository,
     private val dateTimeFormatterManager: DateTimeFormatterManager,
     private val packageName: String? = null // null = all apps, non-null = specific app

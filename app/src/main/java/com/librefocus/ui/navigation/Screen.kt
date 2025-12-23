@@ -12,7 +12,12 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
+import androidx.navigation.NamedNavArgument
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.librefocus.R
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 enum class Screen(
     val route: String,
@@ -109,5 +114,24 @@ enum class Screen(
 
     companion object {
         val entries: List<Screen> = Screen.entries
+    }
+}
+
+/**
+ * Navigation routes for screens that require parameters.
+ * These are not part of the bottom navigation.
+ */
+object AppDetailRoute {
+    const val ROUTE_PATTERN = "app_detail/{packageName}/{appName}"
+    
+    val arguments: List<NamedNavArgument> = listOf(
+        navArgument("packageName") { type = NavType.StringType },
+        navArgument("appName") { type = NavType.StringType }
+    )
+    
+    fun createRoute(packageName: String, appName: String): String {
+        val encodedPackage = URLEncoder.encode(packageName, StandardCharsets.UTF_8.toString())
+        val encodedName = URLEncoder.encode(appName, StandardCharsets.UTF_8.toString())
+        return "app_detail/$encodedPackage/$encodedName"
     }
 }
