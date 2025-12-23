@@ -13,8 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -28,18 +28,17 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
@@ -62,6 +61,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.librefocus.ui.common.AppScaffold
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -274,14 +274,14 @@ fun CategoryListPane(
         derivedStateOf { listState.firstVisibleItemIndex == 0 }
     }
     
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = { Text("App Categories") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -306,8 +306,10 @@ fun CategoryListPane(
                     Snackbar { Text(errorMessage) }
                 }
             }
-        }
-    ) { paddingValues ->
+        },
+        topAppBarScrollBehavior = scrollBehavior,
+        showBottomBar = false
+    ) { paddingValues, scrollModifier ->
         when {
             uiState.isLoading -> {
                 Box(
@@ -341,6 +343,7 @@ fun CategoryListPane(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
+                        .then(scrollModifier)
                 ) {
                     items(uiState.categories, key = { it.id }) { category ->
                         CategoryListItem(
@@ -458,14 +461,14 @@ fun CategoryDetailPane(
         derivedStateOf { listState.firstVisibleItemIndex == 0 }
     }
     
-    Scaffold(
+    AppScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = { Text(category.name) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -478,8 +481,10 @@ fun CategoryDetailPane(
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Add App") }
             )
-        }
-    ) { paddingValues ->
+        },
+        topAppBarScrollBehavior = scrollBehavior,
+        showBottomBar = false
+    ) { paddingValues, scrollModifier ->
         when {
             apps.isEmpty() -> {
                 Box(
@@ -502,6 +507,7 @@ fun CategoryDetailPane(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
+                        .then(scrollModifier)
                 ) {
                     items(apps, key = { it.id }) { app ->
                         AppListItem(
