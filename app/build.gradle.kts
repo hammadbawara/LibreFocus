@@ -115,5 +115,11 @@ dependencies {
     implementation(libs.compose.settings.ui)
     implementation(libs.compose.settings.ui.extended)
 
+    // Material 3 Adaptive
+    implementation(libs.androidx.material3.adaptive)
+    implementation(libs.androidx.material3.adaptive.layout)
+    implementation(libs.androidx.material3.adaptive.navigation)
+    implementation(libs.androidx.material3.window.size)
+
     testImplementation(libs.junit)
 }

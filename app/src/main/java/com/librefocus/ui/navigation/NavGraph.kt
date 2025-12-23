@@ -2,18 +2,18 @@ package com.librefocus.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.librefocus.ui.categories.CategoryScreen
 import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.LimitsScreen
 import com.librefocus.ui.settings.SettingsScreen
 import com.librefocus.ui.stats.AppDetailScreen
 import com.librefocus.ui.stats.StatsScreen
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 @Composable
 fun NavGraph() {
@@ -35,8 +35,8 @@ fun NavGraph() {
             StatsScreen(
                 navController = navController,
                 currentRoute = currentRoute,
-                onAppClick = { packageName ->
-                    navController.navigate("app_detail/$packageName")
+                onAppClick = { packageName, appName ->
+                    navController.navigate(AppDetailRoute.createRoute(packageName, appName))
                 }
             )
         }
@@ -75,12 +75,11 @@ fun NavGraph() {
             )
         }
         composable(
-            route = "app_detail/{packageName}",
-            arguments = listOf(
-                navArgument("packageName") { type = NavType.StringType }
-            )
+            route = AppDetailRoute.ROUTE_PATTERN,
+            arguments = AppDetailRoute.arguments
         ) { backStackEntry ->
-            val packageName = backStackEntry.arguments?.getString("packageName") ?: ""
+            val encodedPackageName = backStackEntry.arguments?.getString("packageName") ?: ""
+            val packageName = URLDecoder.decode(encodedPackageName, StandardCharsets.UTF_8.toString())
             AppDetailScreen(
                 packageName = packageName,
                 onBackClick = { navController.navigateUp() }

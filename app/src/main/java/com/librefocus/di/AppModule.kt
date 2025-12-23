@@ -5,6 +5,7 @@ import com.librefocus.ui.categories.CategoryViewModel
 import com.librefocus.ui.home.HomeViewModel
 import com.librefocus.ui.onboarding.OnboardingViewModel
 import com.librefocus.ui.settings.SettingsViewModel
+import com.librefocus.ui.stats.AppDetailViewModel
 import com.librefocus.ui.stats.StatsContentViewModel
 import com.librefocus.ui.stats.StatsViewModel
 import org.koin.core.module.dsl.viewModel
@@ -40,6 +41,16 @@ val statsModule = module {
 
 val settingsModule = module {
     viewModelOf(::SettingsViewModel)
+}
+
+val appDetailModule = module {
+    factory { (packageName: String) ->
+        AppDetailViewModel(
+            packageName = packageName,
+            usageRepository = get(),
+            dateTimeFormatterManager = get()
+        )
+    }
 }
 
 val categoryModule = module {

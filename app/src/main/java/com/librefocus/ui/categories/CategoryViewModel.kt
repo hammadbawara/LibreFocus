@@ -465,4 +465,116 @@ class CategoryViewModel(
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
+    
+    /**
+     * Show add app bottom sheet
+     */
+    fun showAddAppBottomSheet() {
+        loadAvailableAppsToAdd()
+        _uiState.update { it.copy(showAddAppBottomSheet = true) }
+    }
+    
+    /**
+     * Hide add app bottom sheet
+     */
+    fun hideAddAppBottomSheet() {
+        _uiState.update { it.copy(showAddAppBottomSheet = false) }
+    }
+    
+    /**
+     * Load apps from other categories that can be added
+     */
+    private fun loadAvailableAppsToAdd() {
+        viewModelScope.launch {
+            val selectedCategoryId = _uiState.value.selectedCategoryId ?: return@launch
+            
+            try {
+                val allCategories = categoryRepository.getAllCategories().first()
+                val packageManager = context.packageManager
+                val availableApps = mutableListOf<AppItemWithCategory>()
+                
+                // Get apps from all categories except the selected one
+                allCategories.forEach { category ->
+                    if (category.id != selectedCategoryId) {
+                        val apps = categoryRepository.getAppsByCategory(category.id).first()
+                        apps.forEach { app ->
+                            // Try to get app icon from package manager
+                            val icon = try {
+                                packageManager.getApplicationIcon(app.packageName)
+                            } catch (e: PackageManager.NameNotFoundException) {
+                                null
+                            }
+                            
+                            availableApps.add(
+                                AppItemWithCategory(
+                                    id = app.id,
+                                    packageName = app.packageName,
+                                    appName = app.appName,
+                                    icon = icon,
+                                    categoryId = category.id,
+                                    categoryName = category.categoryName
+                                )
+                            )
+                        }
+                    }
+                }
+                
+                _uiState.update { 
+                    it.copy(availableAppsToAdd = availableApps.sortedBy { app -> app.appName })
+                }
+                
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(error = "Failed to load available apps: ${e.message}")
+                }
+            }
+        }
+    }
+    
+    /**
+     * Show move app confirmation
+     */
+    fun showMoveAppConfirmation(appId: Int) {
+        val app = _uiState.value.availableAppsToAdd.find { it.id == appId }
+        val selectedCategoryId = _uiState.value.selectedCategoryId
+        val toCategoryName = _uiState.value.categories.find { it.id == selectedCategoryId }?.name
+        
+        if (app != null && selectedCategoryId != null && toCategoryName != null) {
+            _uiState.update { 
+                it.copy(
+                    confirmationDialog = ConfirmationDialog.MoveApp(
+                        appId = appId,
+                        appName = app.appName,
+                        fromCategoryName = app.categoryName,
+                        toCategoryId = selectedCategoryId,
+                        toCategoryName = toCategoryName
+                    ),
+                    showAddAppBottomSheet = false
+                )
+            }
+        }
+    }
+    
+    /**
+     * Move an app to the selected category
+     */
+    fun moveAppToCategory(appId: Int, toCategoryId: Int) {
+        viewModelScope.launch {
+            try {
+                categoryRepository.updateAppCategory(appId, toCategoryId)
+                
+                // Hide confirmation and refresh
+                _uiState.update { it.copy(confirmationDialog = null) }
+                loadCategories()
+                
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        confirmationDialog = null,
+                        error = "Failed to move app: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
 }

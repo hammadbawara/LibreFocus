@@ -6,6 +6,7 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.BottomAppBarScrollBehavior
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -28,6 +29,8 @@ import com.librefocus.ui.navigation.Screen
  * @param modifier Optional modifier for the scaffold
  * @param topBar Optional top app bar composable. If null, no top bar is shown
  * @param bottomBar Optional bottom navigation bar composable. If null, no bottom bar is shown
+ * @param floatingActionButton Optional floating action button
+ * @param floatingActionButtonPosition Position of the FAB (default: End)
  * @param snackbarHost Optional snackbar host. If null, a default one is provided
  * @param topAppBarScrollBehavior Optional scroll behavior for the top app bar
  * @param bottomBarScrollBehavior Optional scroll behavior for the bottom bar
@@ -41,6 +44,8 @@ fun AppScaffold(
     modifier: Modifier = Modifier,
     topBar: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
+    floatingActionButton: @Composable () -> Unit = {},
+    floatingActionButtonPosition: FabPosition = FabPosition.End,
     snackbarHost: @Composable () -> Unit = { SnackbarHost(hostState = remember { SnackbarHostState() }) },
     topAppBarScrollBehavior: TopAppBarScrollBehavior? = null,
     bottomBarScrollBehavior: BottomAppBarScrollBehavior? = null,
@@ -72,6 +77,8 @@ fun AppScaffold(
         modifier = modifier,
         topBar = topBar,
         bottomBar = if (showBottomBar) bottomBar else { {} },
+        floatingActionButton = floatingActionButton,
+        floatingActionButtonPosition = floatingActionButtonPosition,
         snackbarHost = snackbarHost,
         contentWindowInsets = contentWindowInsets
     ) { paddingValues ->

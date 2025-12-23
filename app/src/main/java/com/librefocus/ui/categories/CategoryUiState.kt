@@ -9,10 +9,12 @@ data class CategoryUiState(
     val categories: List<CategoryItem> = emptyList(),
     val selectedCategoryId: Int? = null,
     val appsInSelectedCategory: List<AppItem> = emptyList(),
+    val availableAppsToAdd: List<AppItemWithCategory> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val dialogState: DialogState = DialogState.Hidden,
-    val confirmationDialog: ConfirmationDialog? = null
+    val confirmationDialog: ConfirmationDialog? = null,
+    val showAddAppBottomSheet: Boolean = false
 )
 
 /**
@@ -34,6 +36,18 @@ data class AppItem(
     val packageName: String,
     val appName: String,
     val icon: Any? = null // Drawable or ImageVector
+)
+
+/**
+ * App item with category information for Add App sheet
+ */
+data class AppItemWithCategory(
+    val id: Int,
+    val packageName: String,
+    val appName: String,
+    val icon: Any? = null,
+    val categoryId: Int,
+    val categoryName: String
 )
 
 /**
@@ -70,5 +84,13 @@ sealed class ConfirmationDialog {
         val appId: Int,
         val appName: String,
         val categoryId: Int
+    ) : ConfirmationDialog()
+    
+    data class MoveApp(
+        val appId: Int,
+        val appName: String,
+        val fromCategoryName: String,
+        val toCategoryId: Int,
+        val toCategoryName: String
     ) : ConfirmationDialog()
 }

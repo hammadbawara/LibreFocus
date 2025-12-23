@@ -39,7 +39,7 @@ fun StatsScreen(
     navController: NavController,
     currentRoute: String?,
     viewModel: StatsViewModel = koinViewModel(),
-    onAppClick: (String) -> Unit = {}
+    onAppClick: (packageName: String, appName: String) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -141,7 +141,7 @@ fun StatsScreen(
                         AppUsageListItem(
                             appUsage = appUsage,
                             totalUsageMillis = statsContentUiState.totalUsageMillis,
-                            onClick = { onAppClick(appUsage.packageName) }
+                            onClick = { onAppClick(appUsage.packageName, appUsage.appName) }
                         )
                     }
                 } else {

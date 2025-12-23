@@ -1,42 +1,55 @@
 package com.librefocus.ui.categories
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,90 +66,75 @@ import org.koin.androidx.compose.koinViewModel
 /**
  * Category Management Screen with Material 3 List-Detail pane layout
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun CategoryScreen(
     onNavigateBack: () -> Unit,
     viewModel: CategoryViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val navigator = rememberListDetailPaneScaffoldNavigator<Int>()
     
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("App Categories") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.Close, contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.showAddCategoryDialog() }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Category")
-            }
-        }
-    ) { paddingValues ->
-        
-        // Show error snackbar if needed
-        uiState.error?.let { errorMessage ->
-            LaunchedEffect(errorMessage) {
-                // Error shown, clear it after display
-                viewModel.clearError()
-            }
-            
-            Snackbar(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(errorMessage)
-            }
-        }
-        
-        // Adaptive layout: Single pane on phones, dual pane on tablets
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Left Pane: Category List
-            CategoryListPane(
-                categories = uiState.categories,
-                selectedCategoryId = uiState.selectedCategoryId,
-                isLoading = uiState.isLoading,
-                onCategoryClick = { viewModel.selectCategory(it) },
-                onEditCategory = { viewModel.showEditCategoryDialog(it) },
-                onDeleteCategory = { viewModel.showDeleteConfirmation(it) },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            )
-            
-            // Right Pane: App List (only on tablets or when category is selected)
-            if (uiState.selectedCategoryId != null) {
-                Divider(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(1.dp)
-                )
-                
-                AppListPane(
-                    apps = uiState.appsInSelectedCategory,
-                    categoryName = uiState.categories.find { 
-                        it.id == uiState.selectedCategoryId 
-                    }?.name ?: "",
-                    onRemoveApp = { viewModel.showRemoveAppConfirmation(it) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                )
-            }
+    // Synchronize selected category with navigator
+    LaunchedEffect(uiState.selectedCategoryId) {
+        uiState.selectedCategoryId?.let { categoryId ->
+            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, categoryId)
         }
     }
     
-    // Dialogs
+    BackHandler(navigator.canNavigateBack()) {
+        navigator.navigateBack()
+    }
+    
+    ListDetailPaneScaffold(
+        directive = navigator.scaffoldDirective,
+        value = navigator.scaffoldValue,
+        listPane = {
+            AnimatedPane {
+                CategoryListPane(
+                    uiState = uiState,
+                    onNavigateBack = onNavigateBack,
+                    onCategoryClick = { viewModel.selectCategory(it) },
+                    onAddCategory = { viewModel.showAddCategoryDialog() },
+                    onEditCategory = { viewModel.showEditCategoryDialog(it) },
+                    onDeleteCategory = { viewModel.showDeleteConfirmation(it) },
+                    onClearError = { viewModel.clearError() }
+                )
+            }
+        },
+        detailPane = {
+            AnimatedPane {
+                uiState.selectedCategoryId?.let { categoryId ->
+                    val category = uiState.categories.find { it.id == categoryId }
+                    if (category != null) {
+                        CategoryDetailPane(
+                            category = category,
+                            apps = uiState.appsInSelectedCategory,
+                            onRemoveApp = { viewModel.showRemoveAppConfirmation(it) },
+                            onAddApp = { viewModel.showAddAppBottomSheet() },
+                            onBack = {
+                                navigator.navigateBack()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    )
+    
+    // Dialogs and bottom sheets
+    CategoryDialogsAndSheets(
+        uiState = uiState,
+        viewModel = viewModel
+    )
+}
+
+@Composable
+private fun CategoryDialogsAndSheets(
+    uiState: CategoryUiState,
+    viewModel: CategoryViewModel
+) {
+    // Add/Edit dialogs
     when (val dialogState = uiState.dialogState) {
         is DialogState.Add -> {
             AddEditCategoryDialog(
@@ -165,7 +163,7 @@ fun CategoryScreen(
             )
         }
         
-        else -> { /* No dialog */ }
+        else -> {}
     }
     
     // Confirmation dialogs
@@ -184,9 +182,7 @@ fun CategoryScreen(
                     )
                 },
                 confirmButton = {
-                    TextButton(
-                        onClick = { viewModel.deleteCategory(confirmation.categoryId) }
-                    ) {
+                    TextButton(onClick = { viewModel.deleteCategory(confirmation.categoryId) }) {
                         Text("Delete")
                     }
                 },
@@ -206,9 +202,7 @@ fun CategoryScreen(
                     Text("Remove \"${confirmation.appName}\" from this category? It will be moved to Uncategorized.")
                 },
                 confirmButton = {
-                    TextButton(
-                        onClick = { viewModel.removeAppFromCategory(confirmation.appId) }
-                    ) {
+                    TextButton(onClick = { viewModel.removeAppFromCategory(confirmation.appId) }) {
                         Text("Remove")
                     }
                 },
@@ -220,40 +214,110 @@ fun CategoryScreen(
             )
         }
         
-        null -> { /* No confirmation */ }
+        is ConfirmationDialog.MoveApp -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.hideDialog() },
+                title = { Text("Move App?") },
+                text = { 
+                    Text("Move \"${confirmation.appName}\" from \"${confirmation.fromCategoryName}\" to \"${confirmation.toCategoryName}\"?")
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.moveAppToCategory(confirmation.appId, confirmation.toCategoryId) }) {
+                        Text("Move")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.hideDialog() }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+        
+        null -> {}
+    }
+    
+    // Add App Bottom Sheet
+    if (uiState.showAddAppBottomSheet) {
+        AddAppBottomSheet(
+            availableApps = uiState.availableAppsToAdd,
+            onAppSelect = { viewModel.showMoveAppConfirmation(it) },
+            onDismiss = { viewModel.hideAddAppBottomSheet() }
+        )
     }
 }
 
 /**
- * Category List Pane (Left/Primary pane)
+ * Category List Pane with ExtendedFAB
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryListPane(
-    categories: List<CategoryItem>,
-    selectedCategoryId: Int?,
-    isLoading: Boolean,
+    uiState: CategoryUiState,
+    onNavigateBack: () -> Unit,
     onCategoryClick: (Int) -> Unit,
+    onAddCategory: () -> Unit,
     onEditCategory: (Int) -> Unit,
     onDeleteCategory: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    onClearError: () -> Unit
 ) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surface
-    ) {
+    val listState = rememberLazyListState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val fabExpanded by remember {
+        derivedStateOf { listState.firstVisibleItemIndex == 0 }
+    }
+    
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("App Categories") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                scrollBehavior = scrollBehavior
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onAddCategory,
+                expanded = fabExpanded,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Add Category") }
+            )
+        },
+        snackbarHost = {
+            uiState.error?.let { errorMessage ->
+                LaunchedEffect(errorMessage) {
+                    onClearError()
+                }
+                SnackbarHost(
+                    hostState = remember { SnackbarHostState() }
+                ) {
+                    Snackbar { Text(errorMessage) }
+                }
+            }
+        }
+    ) { paddingValues ->
         when {
-            isLoading -> {
+            uiState.isLoading -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
             }
             
-            categories.isEmpty() -> {
+            uiState.categories.isEmpty() -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -266,18 +330,20 @@ fun CategoryListPane(
             
             else -> {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
                 ) {
-                    items(categories, key = { it.id }) { category ->
+                    items(uiState.categories, key = { it.id }) { category ->
                         CategoryListItem(
                             category = category,
-                            isSelected = category.id == selectedCategoryId,
+                            isSelected = category.id == uiState.selectedCategoryId,
                             onClick = { onCategoryClick(category.id) },
                             onEdit = { onEditCategory(category.id) },
                             onDelete = { onDeleteCategory(category.id) }
                         )
-                        
-                        Divider()
+                        HorizontalDivider()
                     }
                 }
             }
@@ -286,10 +352,10 @@ fun CategoryListPane(
 }
 
 /**
- * Individual category list item
+ * Category list item
  */
 @Composable
-fun CategoryListItem(
+private fun CategoryListItem(
     category: CategoryItem,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -368,58 +434,74 @@ fun CategoryListItem(
 }
 
 /**
- * App List Pane (Right/Secondary pane)
+ * Category Detail Pane with apps list and ExtendedFAB
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppListPane(
+fun CategoryDetailPane(
+    category: CategoryItem,
     apps: List<AppItem>,
-    categoryName: String,
     onRemoveApp: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    onAddApp: () -> Unit,
+    onBack: () -> Unit
 ) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceVariant
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Header
-            Text(
-                text = categoryName,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp)
-            )
-            
-            Divider()
-            
-            // App list
-            when {
-                apps.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "No apps in this category",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+    val listState = rememberLazyListState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val fabExpanded by remember {
+        derivedStateOf { listState.firstVisibleItemIndex == 0 }
+    }
+    
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(category.name) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
+                },
+                scrollBehavior = scrollBehavior
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onAddApp,
+                expanded = fabExpanded,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Add App") }
+            )
+        }
+    ) { paddingValues ->
+        when {
+            apps.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No apps in this category",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(apps, key = { it.id }) { app ->
-                            AppListItem(
-                                app = app,
-                                onRemove = { onRemoveApp(app.id) }
-                            )
-                            
-                            Divider()
-                        }
+            }
+            
+            else -> {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    items(apps, key = { it.id }) { app ->
+                        AppListItem(
+                            app = app,
+                            onRemove = { onRemoveApp(app.id) }
+                        )
+                        HorizontalDivider()
                     }
                 }
             }
@@ -428,10 +510,10 @@ fun AppListPane(
 }
 
 /**
- * Individual app list item
+ * App list item
  */
 @Composable
-fun AppListItem(
+private fun AppListItem(
     app: AppItem,
     onRemove: () -> Unit
 ) {
@@ -453,7 +535,6 @@ fun AppListItem(
             )
         },
         leadingContent = {
-            // Display app icon if available
             app.icon?.let { icon ->
                 if (icon is android.graphics.drawable.Drawable) {
                     val bitmap = remember(icon) { icon.toBitmap().asImageBitmap() }
@@ -474,5 +555,123 @@ fun AppListItem(
                 )
             }
         }
+    )
+}
+
+/**
+ * Bottom sheet for adding apps to category
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddAppBottomSheet(
+    availableApps: List<AppItemWithCategory>,
+    onAppSelect: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+    
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            Text(
+                text = "Add App to Category",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            
+            HorizontalDivider()
+            
+            when {
+                availableApps.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No apps available to add",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(availableApps, key = { it.id }) { app ->
+                            AddAppListItem(
+                                app = app,
+                                onClick = { onAppSelect(app.id) }
+                            )
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * App item in Add App bottom sheet
+ */
+@Composable
+private fun AddAppListItem(
+    app: AppItemWithCategory,
+    onClick: () -> Unit
+) {
+    ListItem(
+        headlineContent = { 
+            Text(
+                app.appName,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        supportingContent = {
+            Text(
+                app.packageName,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        leadingContent = {
+            app.icon?.let { icon ->
+                if (icon is android.graphics.drawable.Drawable) {
+                    val bitmap = remember(icon) { icon.toBitmap().asImageBitmap() }
+                    androidx.compose.foundation.Image(
+                        bitmap = bitmap,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+        },
+        trailingContent = {
+            Surface(
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Text(
+                    text = app.categoryName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        },
+        modifier = Modifier.clickable(onClick = onClick)
     )
 }

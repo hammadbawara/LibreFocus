@@ -1,6 +1,7 @@
 package com.librefocus
 
 import android.app.Application
+import com.librefocus.di.appDetailModule
 import com.librefocus.di.categoryModule
 import com.librefocus.di.dataStoreModule
 import com.librefocus.di.databaseModule
@@ -31,6 +32,7 @@ class LibreFocus: Application() {
                 homeModule,
                 statsModule,
                 settingsModule,
+                appDetailModule,
                 categoryModule,
                 workerModule
             )
