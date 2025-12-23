@@ -1,6 +1,7 @@
 package com.librefocus.di
 
 import com.librefocus.ui.MainViewModel
+import com.librefocus.ui.categories.CategoryViewModel
 import com.librefocus.ui.home.HomeViewModel
 import com.librefocus.ui.onboarding.OnboardingViewModel
 import com.librefocus.ui.settings.SettingsViewModel
@@ -39,4 +40,8 @@ val statsModule = module {
 
 val settingsModule = module {
     viewModelOf(::SettingsViewModel)
+}
+
+val categoryModule = module {
+    viewModelOf(::CategoryViewModel)
 }

@@ -2,9 +2,11 @@ package com.librefocus.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -65,6 +67,23 @@ enum class Screen(
         unselectedIcon = {
             Icon(
                 imageVector = Icons.Outlined.Block,
+                contentDescription = null
+            )
+        }
+    ),
+
+    Categories(
+        route = "categories",
+        label = "Categories",
+        selectedIcon = {
+            Icon(
+                imageVector = Icons.Filled.Category,
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
+            Icon(
+                imageVector = Icons.Outlined.Category,
                 contentDescription = null
             )
         }

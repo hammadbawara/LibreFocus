@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.librefocus.ui.categories.CategoryScreen
 import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.LimitsScreen
 import com.librefocus.ui.settings.SettingsScreen
@@ -43,6 +44,19 @@ fun NavGraph() {
             LimitsScreen(
                 navController = navController,
                 currentRoute = currentRoute
+            )
+        }
+        composable(Screen.Categories.route) {
+            CategoryScreen(
+                onNavigateBack = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
             )
         }
         composable(Screen.Settings.route) {

@@ -6,6 +6,7 @@ import androidx.room.Room
 import com.librefocus.data.local.AppInfoProvider
 import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.data.local.database.UsageDatabase
+import com.librefocus.data.repository.CategoryRepository
 import com.librefocus.data.repository.UsageTrackingRepository
 import org.koin.dsl.module
 
@@ -51,7 +52,7 @@ val databaseModule = module {
         )
     }
     
-    // Repository
+    // Repositories
     single {
         UsageTrackingRepository(
             usageStatsProvider = get(),
@@ -61,6 +62,13 @@ val databaseModule = module {
             dailyDeviceUsageDao = get(),
             syncMetadataDao = get(),
             appInfoProvider = get()
+        )
+    }
+    
+    single {
+        CategoryRepository(
+            appCategoryDao = get(),
+            appDao = get()
         )
     }
 }
