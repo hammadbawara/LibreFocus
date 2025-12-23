@@ -31,12 +31,32 @@ class AppInfoProvider(
         }
     }
 
+    /**
+     * Fetches app category from package manager.
+     *
+     * @param packageName The package name of the app
+     * @return Category name or "Uncategorized" if not found or error occurs
+     */
     suspend fun getAppCategory(packageName: String): String = withContext(Dispatchers.IO) {
-        val  pm = context.packageManager
-        val applicationInfo = pm.getApplicationInfo(packageName, 0);
-        val appCategory = applicationInfo.category
-        val categoryTitle = ApplicationInfo.getCategoryTitle(context, appCategory)
-        return@withContext categoryTitle.toString()
+        try {
+            val pm = context.packageManager
+            val applicationInfo = pm.getApplicationInfo(packageName, 0)
+            val appCategory = applicationInfo.category
+            
+            // If category is undefined, return default
+            if (appCategory == ApplicationInfo.CATEGORY_UNDEFINED) {
+                return@withContext "Uncategorized"
+            }
+            
+            val categoryTitle = ApplicationInfo.getCategoryTitle(context, appCategory)
+            return@withContext categoryTitle?.toString() ?: "Uncategorized"
+        } catch (e: PackageManager.NameNotFoundException) {
+            Log.w(TAG, "Category not found for package: $packageName", e)
+            return@withContext "Uncategorized"
+        } catch (e: Exception) {
+            Log.w(TAG, "Error getting category for package: $packageName", e)
+            return@withContext "Uncategorized"
+        }
     }
 }
 
