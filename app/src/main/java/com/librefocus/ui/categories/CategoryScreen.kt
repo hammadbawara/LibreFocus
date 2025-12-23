@@ -53,6 +53,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -74,6 +76,7 @@ fun CategoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val navigator = rememberListDetailPaneScaffoldNavigator<Int>()
+    val coroutineScope = rememberCoroutineScope()
     
     // Synchronize selected category with navigator
     LaunchedEffect(uiState.selectedCategoryId) {
@@ -83,7 +86,9 @@ fun CategoryScreen(
     }
     
     BackHandler(navigator.canNavigateBack()) {
-        navigator.navigateBack()
+        coroutineScope.launch {
+            navigator.navigateBack()
+        }
     }
     
     ListDetailPaneScaffold(
@@ -113,7 +118,9 @@ fun CategoryScreen(
                             onRemoveApp = { viewModel.showRemoveAppConfirmation(it) },
                             onAddApp = { viewModel.showAddAppBottomSheet() },
                             onBack = {
-                                navigator.navigateBack()
+                                coroutineScope.launch {
+                                    navigator.navigateBack()
+                                }
                             }
                         )
                     }
@@ -365,7 +372,7 @@ private fun CategoryListItem(
     var showMenu by remember { mutableStateOf(false) }
     
     ListItem(
-        headlineContent = { 
+        headlineContent = {
             Text(
                 category.name,
                 maxLines = 1,
