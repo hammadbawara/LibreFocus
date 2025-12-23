@@ -1,6 +1,7 @@
 package com.librefocus.data.repository
 
 import android.util.Log
+import com.librefocus.data.local.AppInfoProvider
 import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
@@ -29,6 +30,7 @@ import java.util.concurrent.TimeUnit
  */
 class UsageTrackingRepository(
     private val usageStatsProvider: UsageStatsProvider,
+    private val appInfoProvider: AppInfoProvider,
     private val appCategoryDao: AppCategoryDao,
     private val appDao: AppDao,
     private val hourlyAppUsageDao: HourlyAppUsageDao,
@@ -76,7 +78,7 @@ class UsageTrackingRepository(
             // Ensure app exists in database
             var app = appDao.getAppByPackageName(packageName)
             if (app == null) {
-                val appName = usageStatsProvider.getAppName(packageName)
+                val appName = appInfoProvider.getAppName(packageName)
                 val appId = appDao.insertApp(
                     AppEntity(
                         packageName = packageName,

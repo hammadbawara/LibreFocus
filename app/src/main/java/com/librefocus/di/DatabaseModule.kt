@@ -3,6 +3,7 @@ package com.librefocus.di
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import androidx.room.Room
+import com.librefocus.data.local.AppInfoProvider
 import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.data.local.database.UsageDatabase
 import com.librefocus.data.repository.UsageTrackingRepository
@@ -43,6 +44,12 @@ val databaseModule = module {
             usageStatsManager = get()
         )
     }
+
+    single {
+        AppInfoProvider(
+            context = get()
+        )
+    }
     
     // Repository
     single {
@@ -52,7 +59,8 @@ val databaseModule = module {
             appDao = get(),
             hourlyAppUsageDao = get(),
             dailyDeviceUsageDao = get(),
-            syncMetadataDao = get()
+            syncMetadataDao = get(),
+            appInfoProvider = get()
         )
     }
 }
