@@ -11,15 +11,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.librefocus.ui.appselection.AppSelectionBottomSheet
 import com.librefocus.ui.common.AppBottomNavigationBar
 import com.librefocus.ui.common.AppScaffold
 import org.koin.androidx.compose.koinViewModel
@@ -34,15 +30,6 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
-
-    var showAppsList by remember { mutableStateOf(false) }
-
-    AppSelectionBottomSheet(
-        onDismiss = { showAppsList = false },
-        onConfirm = {
-
-        }
-    )
 
     AppScaffold(
         topBar = {

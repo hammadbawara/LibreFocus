@@ -46,6 +46,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -171,7 +174,7 @@ private fun SearchBar(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier.fillMaxWidth(),
-        placeholder = { Text("Search by name, package, or category") },
+        placeholder = { Text("Search") },
         maxLines = 1,
         leadingIcon = {
             Icon(
@@ -370,6 +373,115 @@ private fun EmptyState(searchQuery: String) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+// Preview providers
+class AppSelectionUiStateProvider : PreviewParameterProvider<AppSelectionUiState> {
+    override val values = sequenceOf(
+        AppSelectionUiState(
+            isLoading = true,
+            allApps = emptyList(),
+            filteredApps = emptyList(),
+            selectedPackages = emptySet(),
+            searchQuery = "",
+            selectedCategory = "ALL",
+            availableCategories = listOf("ALL", "Social", "Productivity")
+        ),
+        AppSelectionUiState(
+            isLoading = false,
+            allApps = listOf(
+                InstalledApp("com.example.app1", "WhatsApp", null, "Communication"),
+                InstalledApp("com.example.app2", "Instagram", null, "Social"),
+                InstalledApp("com.example.app3", "Gmail", null, "Productivity"),
+                InstalledApp("com.example.app4", "YouTube", null, "Entertainment")
+            ),
+            filteredApps = listOf(
+                InstalledApp("com.example.app1", "WhatsApp", null, "Communication"),
+                InstalledApp("com.example.app2", "Instagram", null, "Social"),
+                InstalledApp("com.example.app3", "Gmail", null, "Productivity")
+            ),
+            selectedPackages = setOf("com.example.app1", "com.example.app3"),
+            searchQuery = "",
+            selectedCategory = "ALL",
+            availableCategories = listOf("ALL", "Communication", "Social", "Productivity", "Entertainment")
+        ),
+        AppSelectionUiState(
+            isLoading = false,
+            allApps = listOf(
+                InstalledApp("com.example.app1", "WhatsApp", null, "Communication"),
+                InstalledApp("com.example.app2", "Instagram", null, "Social")
+            ),
+            filteredApps = emptyList(),
+            selectedPackages = emptySet(),
+            searchQuery = "nonexistent",
+            selectedCategory = "ALL",
+            availableCategories = listOf("ALL", "Communication", "Social")
+        )
+    )
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "App Selection Bottom Sheet Content")
+@PreviewParameter(AppSelectionUiStateProvider::class)
+@Composable
+private fun AppSelectionBottomSheetContentPreview(
+    @PreviewParameter(AppSelectionUiStateProvider::class) uiState: AppSelectionUiState
+) {
+    MaterialTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 16.dp)
+            ) {
+                TopActionBar(
+                    selectedCount = uiState.selectedPackages.size,
+                    totalCount = uiState.allApps.size,
+                    onCancel = {},
+                    onConfirm = {},
+                    isConfirmEnabled = uiState.selectedPackages.isNotEmpty()
+                )
+
+                HorizontalDivider()
+
+                SearchBar(
+                    query = uiState.searchQuery,
+                    onQueryChange = {},
+                    onClear = {},
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+
+                CategoryFilter(
+                    categories = uiState.availableCategories,
+                    selectedCategory = uiState.selectedCategory,
+                    onCategorySelected = {},
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                when {
+                    uiState.isLoading -> {
+                        LoadingState()
+                    }
+                    uiState.filteredApps.isEmpty() -> {
+                        EmptyState(searchQuery = uiState.searchQuery)
+                    }
+                    else -> {
+                        AppList(
+                            apps = uiState.filteredApps,
+                            selectedPackages = uiState.selectedPackages,
+                            showPackageName = true,
+                            showCategory = true,
+                            onAppToggle = {}
+                        )
+                    }
+                }
             }
         }
     }
