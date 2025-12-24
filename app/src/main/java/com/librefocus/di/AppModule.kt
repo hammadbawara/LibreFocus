@@ -1,6 +1,7 @@
 package com.librefocus.di
 
 import com.librefocus.ui.MainViewModel
+import com.librefocus.ui.appselection.AppSelectionViewModel
 import com.librefocus.ui.categories.CategoryViewModel
 import com.librefocus.ui.home.HomeViewModel
 import com.librefocus.ui.onboarding.OnboardingViewModel
@@ -55,4 +56,14 @@ val appDetailModule = module {
 
 val categoryModule = module {
     viewModelOf(::CategoryViewModel)
+}
+
+val appSelectionModule = module {
+    viewModel { params ->
+        AppSelectionViewModel(
+            context = get(),
+            allowMultipleSelection = params.get(),
+            preSelectedPackages = params.get()
+        )
+    }
 }
