@@ -78,6 +78,8 @@ com/librefocus/
 └── ui/
     ├── MainActivity.kt
     ├── MainViewModel.kt
+    ├── common/
+    │   └── AppScaffold.kt           # Common scaffold for consistent UI behavior
     ├── navigation/
     │   ├── NavGraph.kt              # Main navigation graph
     │   └── Screen.kt                # Screen routes
@@ -206,6 +208,7 @@ com/librefocus/
 #### 3. UI/UX Improvements
 - [x] ~~Complete insights/analytics screens~~
 - [x] ~~Settings screen with theme and date/time configuration~~
+- [x] Common AppScaffold component for UI consistency across screens
 - [ ] App categorization management UI
 - [ ] Gamification dashboard
 - [ ] Prevention tools settings
@@ -231,6 +234,7 @@ com/librefocus/
 - **DO** use Koin for all dependency injection
 - **DO** use DataStore for simple key-value preferences
 - **DO** use Room for complex structured data (usage history, categories, gamification)
+- **DO** isolate Android-specific APIs in provider/utility classes (e.g., AppInfoProvider)
 
 #### Code Quality
 - **DO** use Kotlin coroutines for async operations
@@ -262,6 +266,7 @@ com/librefocus/
 - **DON'T** access repositories directly from UI layer
 - **DON'T** mix navigation logic with UI composables
 - **DON'T** create god classes or ViewModels
+- **DON'T** use Android-specific APIs directly in UI, ViewModel, or Repository layers
 
 #### Dependencies & Libraries
 - **DON'T** use Hilt/Dagger (use Koin instead)
@@ -417,6 +422,14 @@ com/librefocus/
 - **Theme.kt** - Material 3 theme configuration with dynamic color support
 - **Color.kt** - Color palette definitions
 - **Type.kt** - Typography definitions
+
+#### Common UI Components
+- **AppScaffold.kt** - Common scaffold wrapper for consistent app behavior
+  - Provides unified Scaffold with customizable top bar, bottom bar, FAB, and snackbar
+  - Automatically collapses top app bar on scroll for better UX
+  - Combines scroll behaviors for top and bottom bars using nestedScroll
+  - Includes AppBottomNavigationBar for consistent bottom navigation across screens
+  - Used by all main screens (Home, Stats, Settings, Categories, Limits) for UI consistency
 
 ---
 
@@ -631,6 +644,7 @@ When generating code:
 - ✅ Koin dependency injection
 - ✅ Coroutine usage for async operations
 - ✅ DateTimeFormatterManager for all date/time display
+- ✅ Android-specific APIs isolated in provider/utility classes
 
 **Date/Time Formatting:**
 - ✅ NEVER hardcode date/time patterns
