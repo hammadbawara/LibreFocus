@@ -77,7 +77,7 @@ com/librefocus/
 ### Installation
 1. Clone the repository
    ```bash
-   git clone https://github.com/yourusername/librefocus.git
+   git clone https://github.com/hammadbawara/librefocus.git
    ```
 2. Open the project in Android Studio
 3. Sync Gradle dependencies
