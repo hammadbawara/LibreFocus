@@ -275,6 +275,7 @@ com/librefocus/
 - **DON'T** hardcode strings (use string resources)
 - **DON'T** hardcode colors or dimensions (use theme system)
 - **DON'T** create memory leaks (avoid Activity/Fragment references in ViewModels)
+- **DON'T** create custom DateTimeFormatter instances - **ALWAYS use DateTimeFormatterManager** for consistency across the app
 
 #### Data Layer
 - **DON'T** perform database operations on main thread
@@ -634,7 +635,8 @@ When generating code:
 
 **Date/Time Formatting:**
 - ✅ NEVER hardcode date/time patterns
-- ✅ ALWAYS use DateTimeFormatterManager
+- ✅ NEVER create custom DateTimeFormatter instances
+- ✅ ALWAYS use DateTimeFormatterManager for all date/time display
 - ✅ Store timestamps in UTC milliseconds
 - ✅ Convert to display timezone at UI layer only
 - ✅ Inject DateTimeFormatterManager into ViewModels that need formatting
