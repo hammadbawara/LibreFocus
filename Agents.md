@@ -176,8 +176,8 @@ com/librefocus/
   - [ ] Category-based statistics
   
 - [ ] **App Categorization**
-  - [ ] Auto-categorization logic
-  - [ ] Custom category CRUD operations
+  - [x] Auto-categorization logic
+  - [x] Custom category CRUD operations
   - [ ] Category-based insights UI
   
 - [ ] **Prevention Tools**
@@ -550,7 +550,7 @@ When generating code:
    - Proper annotations
    - Koin injection setup
    - Error handling
-   - Documentation comments
+   - Add comments only where the code is not self-explanatory or could be ambiguous
 
 4. **Follow naming conventions**:
    - ViewModels: `[Feature]ViewModel.kt`
