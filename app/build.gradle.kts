@@ -122,4 +122,7 @@ dependencies {
     implementation(libs.androidx.material3.window.size)
 
     testImplementation(libs.junit)
+
+
+    implementation(libs.wheelpickercompose)
 }
