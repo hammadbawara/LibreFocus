@@ -396,28 +396,28 @@ private fun CategoryListItem(
                 }
             )
         },
-        trailingContent = {
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                }
-                
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Edit") },
-                        onClick = {
-                            showMenu = false
-                            onEdit()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Edit, contentDescription = null)
-                        }
-                    )
+        trailingContent = if (category.isCustom) {
+            {
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    }
                     
-                    if (category.isCustom) {
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Edit") },
+                            onClick = {
+                                showMenu = false
+                                onEdit()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Edit, contentDescription = null)
+                            }
+                        )
+                        
                         DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = {
@@ -431,7 +431,7 @@ private fun CategoryListItem(
                     }
                 }
             }
-        },
+        } else null,
         colors = ListItemDefaults.colors(
             containerColor = if (isSelected) {
                 MaterialTheme.colorScheme.secondaryContainer

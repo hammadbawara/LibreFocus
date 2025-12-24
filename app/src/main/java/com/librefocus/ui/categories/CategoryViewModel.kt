@@ -4,10 +4,12 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.librefocus.data.local.AppInfoProvider
 import com.librefocus.data.local.database.entity.AppCategoryEntity
 import com.librefocus.data.repository.CategoryAlreadyExistsException
 import com.librefocus.data.repository.CategoryRepository
 import com.librefocus.utils.CategoryIconMapper
+import com.librefocus.utils.SystemCategoryMapper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,12 +18,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel for the Category Management screen.
- * Manages category CRUD operations, app assignments, and UI state.
- */
 class CategoryViewModel(
     private val categoryRepository: CategoryRepository,
+    private val appInfoProvider: AppInfoProvider,
     private val context: Context
 ) : ViewModel() {
     
@@ -54,12 +53,16 @@ class CategoryViewModel(
                             it.categoryName.equals("Undefined", ignoreCase = true) 
                         }?.id
                         
-                        // Map to CategoryItem with app counts
                         val categoryItems = categories.map { category ->
                             val appCount = categoryRepository.getAppCountInCategory(category.id)
+                            val displayName = if (category.systemCategoryId != null) {
+                                SystemCategoryMapper.getLocalizedCategoryName(context, category.systemCategoryId)
+                            } else {
+                                category.categoryName
+                            }
                             CategoryItem(
                                 id = category.id,
-                                name = category.categoryName,
+                                name = displayName,
                                 icon = CategoryIconMapper.getIconForCategory(category.categoryName, category.isCustom),
                                 isCustom = category.isCustom,
                                 appCount = appCount
@@ -95,9 +98,6 @@ class CategoryViewModel(
         loadAppsForCategory(categoryId)
     }
     
-    /**
-     * Load apps for the selected category
-     */
     private fun loadAppsForCategory(categoryId: Int) {
         viewModelScope.launch {
             try {
@@ -109,8 +109,11 @@ class CategoryViewModel(
                     }
                     .collect { apps ->
                         val packageManager = context.packageManager
-                        val appItems = apps.map { app ->
-                            // Try to get app icon from package manager
+                        val appItems = apps.mapNotNull { app ->
+                            if (!appInfoProvider.isAppInstalled(app.packageName)) {
+                                return@mapNotNull null
+                            }
+                            
                             val icon = try {
                                 packageManager.getApplicationIcon(app.packageName)
                             } catch (e: PackageManager.NameNotFoundException) {
@@ -482,9 +485,6 @@ class CategoryViewModel(
         _uiState.update { it.copy(showAddAppBottomSheet = false) }
     }
     
-    /**
-     * Load apps from other categories that can be added
-     */
     private fun loadAvailableAppsToAdd() {
         viewModelScope.launch {
             val selectedCategoryId = _uiState.value.selectedCategoryId ?: return@launch
@@ -494,16 +494,24 @@ class CategoryViewModel(
                 val packageManager = context.packageManager
                 val availableApps = mutableListOf<AppItemWithCategory>()
                 
-                // Get apps from all categories except the selected one
                 allCategories.forEach { category ->
                     if (category.id != selectedCategoryId) {
                         val apps = categoryRepository.getAppsByCategory(category.id).first()
                         apps.forEach { app ->
-                            // Try to get app icon from package manager
+                            if (!appInfoProvider.isAppInstalled(app.packageName)) {
+                                return@forEach
+                            }
+                            
                             val icon = try {
                                 packageManager.getApplicationIcon(app.packageName)
                             } catch (e: PackageManager.NameNotFoundException) {
                                 null
+                            }
+                            
+                            val displayName = if (category.systemCategoryId != null) {
+                                SystemCategoryMapper.getLocalizedCategoryName(context, category.systemCategoryId)
+                            } else {
+                                category.categoryName
                             }
                             
                             availableApps.add(
@@ -513,7 +521,7 @@ class CategoryViewModel(
                                     appName = app.appName,
                                     icon = icon,
                                     categoryId = category.id,
-                                    categoryName = category.categoryName
+                                    categoryName = displayName
                                 )
                             )
                         }

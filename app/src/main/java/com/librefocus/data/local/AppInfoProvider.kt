@@ -14,12 +14,16 @@ class AppInfoProvider(
     companion object {
         private const val TAG = "ApplicationInfoProvider"
     }
-    /**
-     * Fetches app metadata (name) from package manager.
-     *
-     * @param packageName The package name of the app
-     * @return App name or the package name if not found
-     */
+
+    suspend fun isAppInstalled(packageName: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            context.packageManager.getPackageInfo(packageName, 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
+
     suspend fun getAppName(packageName: String): String = withContext(Dispatchers.IO) {
         try {
             val packageManager = context.packageManager
@@ -56,6 +60,18 @@ class AppInfoProvider(
         } catch (e: Exception) {
             Log.w(TAG, "Error getting category for package: $packageName", e)
             return@withContext "Uncategorized"
+        }
+    }
+
+    suspend fun getCategoryId(packageName: String): Int = withContext(Dispatchers.IO) {
+        try {
+            val pm = context.packageManager
+            val applicationInfo = pm.getApplicationInfo(packageName, 0)
+            return@withContext applicationInfo.category
+        } catch (e: PackageManager.NameNotFoundException) {
+            return@withContext ApplicationInfo.CATEGORY_UNDEFINED
+        } catch (e: Exception) {
+            return@withContext ApplicationInfo.CATEGORY_UNDEFINED
         }
     }
 }

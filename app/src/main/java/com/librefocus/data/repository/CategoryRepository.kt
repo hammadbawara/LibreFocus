@@ -1,5 +1,6 @@
 package com.librefocus.data.repository
 
+import android.content.pm.ApplicationInfo
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
 import com.librefocus.data.local.database.entity.AppCategoryEntity
@@ -7,9 +8,6 @@ import com.librefocus.data.local.database.entity.AppEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
-/**
- * Repository for managing app categories and their relationships with apps.
- */
 class CategoryRepository(
     private val appCategoryDao: AppCategoryDao,
     private val appDao: AppDao
@@ -27,6 +25,10 @@ class CategoryRepository(
     suspend fun getCategoryByName(categoryName: String): AppCategoryEntity? {
         return appCategoryDao.getCategoryByName(categoryName)
     }
+    
+    suspend fun getCategoryBySystemId(systemCategoryId: Int): AppCategoryEntity? {
+        return appCategoryDao.getCategoryBySystemId(systemCategoryId)
+    }
 
     fun getAppsByCategory(categoryId: Int): Flow<List<AppEntity>> {
         return appDao.getAppsByCategory(categoryId)
@@ -37,7 +39,6 @@ class CategoryRepository(
     }
 
     suspend fun insertCategory(category: AppCategoryEntity): Long {
-        // Check if category name already exists
         val existing = appCategoryDao.getCategoryByName(category.categoryName)
         if (existing != null) {
             throw CategoryAlreadyExistsException("Category '${category.categoryName}' already exists")
@@ -47,7 +48,6 @@ class CategoryRepository(
     }
 
     suspend fun updateCategory(category: AppCategoryEntity) {
-        // Check if the new name conflicts with another category
         val existing = appCategoryDao.getCategoryByName(category.categoryName)
         if (existing != null && existing.id != category.id) {
             throw CategoryAlreadyExistsException("Category '${category.categoryName}' already exists")
@@ -64,7 +64,6 @@ class CategoryRepository(
                 throw CategoryNotEmptyException("Cannot delete category with ${appsInCategory.size} apps")
             }
             
-            // Move all apps to uncategorized
             appsInCategory.forEach { app ->
                 appDao.updateApp(app.copy(categoryId = uncategorizedCategoryId))
             }
@@ -92,23 +91,24 @@ class CategoryRepository(
         
         if (existingCategories.isEmpty()) {
             val systemCategories = listOf(
-                "Undefined",
-                "Game",
-                "Audio",
-                "Video",
-                "Image",
-                "Social",
-                "News",
-                "Maps",
-                "Productivity",
-                "Accessibility"
+                ApplicationInfo.CATEGORY_UNDEFINED to "Undefined",
+                ApplicationInfo.CATEGORY_GAME to "Game",
+                ApplicationInfo.CATEGORY_AUDIO to "Audio",
+                ApplicationInfo.CATEGORY_VIDEO to "Video",
+                ApplicationInfo.CATEGORY_IMAGE to "Image",
+                ApplicationInfo.CATEGORY_SOCIAL to "Social",
+                ApplicationInfo.CATEGORY_NEWS to "News",
+                ApplicationInfo.CATEGORY_MAPS to "Maps",
+                ApplicationInfo.CATEGORY_PRODUCTIVITY to "Productivity",
+                ApplicationInfo.CATEGORY_ACCESSIBILITY to "Accessibility"
             )
             
             val currentTime = System.currentTimeMillis()
-            val categoriesToInsert = systemCategories.map { name ->
+            val categoriesToInsert = systemCategories.map { (id, fallbackName) ->
                 AppCategoryEntity(
-                    categoryName = name,
+                    categoryName = fallbackName,
                     isCustom = false,
+                    systemCategoryId = id,
                     addedAtUtc = currentTime
                 )
             }
@@ -119,6 +119,4 @@ class CategoryRepository(
 }
 
 class CategoryAlreadyExistsException(message: String) : Exception(message)
-
-
 class CategoryNotEmptyException(message: String) : Exception(message)
