@@ -2,13 +2,21 @@ package com.librefocus.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.librefocus.ui.categories.CategoryScreen
 import com.librefocus.ui.home.HomeScreen
+import com.librefocus.ui.limits.CreateLimitScreen
+import com.librefocus.ui.limits.LaunchCountLimitScreen
 import com.librefocus.ui.limits.LimitsScreen
+import com.librefocus.ui.limits.ScheduleLimitScreen
+import com.librefocus.ui.limits.SetLimitScreen
+import com.librefocus.ui.limits.UsageLimitScreen
 import com.librefocus.ui.settings.SettingsScreen
 import com.librefocus.ui.stats.AppDetailScreen
 import com.librefocus.ui.stats.StatsScreen
@@ -44,6 +52,89 @@ fun NavGraph() {
             LimitsScreen(
                 navController = navController,
                 currentRoute = currentRoute
+            )
+        }
+        composable("create_limit") {
+            CreateLimitScreen(
+                onNavigateBack = {
+                    navController.navigateUp()
+                },
+                onNavigateToSetLimit = {
+                    navController.navigate("set_limit")
+                }
+            )
+        }
+        composable(
+            route = "create_limit/{limitId}",
+            arguments = listOf(
+                navArgument("limitId") { type = NavType.StringType }
+            )
+        ) {
+            CreateLimitScreen(
+                onNavigateBack = {
+                    navController.navigateUp()
+                },
+                onNavigateToSetLimit = {
+                    navController.navigate("set_limit")
+                }
+            )
+        }
+        composable("set_limit") {
+            SetLimitScreen(
+                onNavigateBack = {
+                    navController.navigateUp()
+                },
+                onNavigateToSchedule = {
+                    navController.navigate("schedule_limit")
+                },
+                onNavigateToUsage = {
+                    navController.navigate("usage_limit")
+                },
+                onNavigateToLaunchCount = {
+                    navController.navigate("launch_count_limit")
+                }
+            )
+        }
+        composable("schedule_limit") {
+            val parentEntry = remember(it) {
+                navController.getBackStackEntry("create_limit")
+            }
+            
+            ScheduleLimitScreen(
+                onNavigateBack = { config ->
+                    if (config != null) {
+                        parentEntry.savedStateHandle["limit_config_result"] = config
+                    }
+                    navController.popBackStack("create_limit", false)
+                }
+            )
+        }
+        composable("usage_limit") {
+            val parentEntry = remember(it) {
+                navController.getBackStackEntry("create_limit")
+            }
+            
+            UsageLimitScreen(
+                onNavigateBack = { config ->
+                    if (config != null) {
+                        parentEntry.savedStateHandle["limit_config_result"] = config
+                    }
+                    navController.popBackStack("create_limit", false)
+                }
+            )
+        }
+        composable("launch_count_limit") {
+            val parentEntry = remember(it) {
+                navController.getBackStackEntry("create_limit")
+            }
+            
+            LaunchCountLimitScreen(
+                onNavigateBack = { config ->
+                    if (config != null) {
+                        parentEntry.savedStateHandle["limit_config_result"] = config
+                    }
+                    navController.popBackStack("create_limit", false)
+                }
             )
         }
         composable(Screen.Categories.route) {
