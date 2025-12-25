@@ -2,11 +2,10 @@ package com.librefocus.ui.limits
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,20 +15,23 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,7 +40,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.librefocus.models.DayOfWeek
 import com.librefocus.ui.common.AppScaffold
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalTime
@@ -54,10 +55,20 @@ fun ScheduleLimitScreen(
     val timeSlots by viewModel.timeSlotsState.collectAsStateWithLifecycle()
     val selectedDays by viewModel.selectedDaysState.collectAsStateWithLifecycle()
     val isAllWeek by viewModel.isAllWeekState.collectAsStateWithLifecycle()
+    val isSaveEnabled by viewModel.isSaveEnabled.collectAsStateWithLifecycle()
+    val validationError by viewModel.validationErrorState.collectAsStateWithLifecycle()
 
     var showTimePicker by remember { mutableStateOf(false) }
     var timePickerType by remember { mutableStateOf<TimePickerType?>(null) }
-    var pendingFromTime by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var pendingFromHour by remember { mutableStateOf<Int?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(validationError) {
+        validationError?.let {
+            snackbarHostState.showSnackbar(it.message)
+            viewModel.clearValidationError()
+        }
+    }
 
     AppScaffold(
         topBar = {
@@ -69,104 +80,103 @@ fun ScheduleLimitScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues, _ ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Card {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "All Day",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Checkbox(
-                        checked = isAllDay,
-                        onCheckedChange = { viewModel.setAllDay(it) }
-                    )
-                }
-            }
-
-            if (!isAllDay) {
-                Text(
-                    text = "Time Slots",
-                    style = MaterialTheme.typography.titleSmall
-                )
-
-                timeSlots.forEachIndexed { index, slot ->
-                    OutlinedCard {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Card {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "${formatMinutesToTime(slot.fromHour)} - ${formatMinutesToTime(slot.toHour)}",
-                                style = MaterialTheme.typography.bodyLarge
+                                text = "All Day",
+                                style = MaterialTheme.typography.titleSmall
                             )
-                            IconButton(onClick = { viewModel.removeTimeSlot(index) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                            Switch(
+                                checked = isAllDay,
+                                onCheckedChange = { viewModel.setAllDay(it) }
+                            )
+                        }
+
+                        if (!isAllDay) {
+                            HorizontalDivider()
+
+                            Text(
+                                text = "Time Slots",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            timeSlots.forEachIndexed { index, slot ->
+                                OutlinedCard {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "${formatMinutesToTime(slot.fromHour)} – ${formatMinutesToTime(slot.toHour)}",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        IconButton(onClick = { viewModel.removeTimeSlot(index) }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                        }
+                                    }
+                                }
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    timePickerType = TimePickerType.FROM
+                                    showTimePicker = true
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Add Time Slot")
                             }
                         }
                     }
                 }
 
-                OutlinedButton(
-                    onClick = {
-                        timePickerType = TimePickerType.FROM
-                        showTimePicker = true
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Add Time Slot")
-                }
+                DaysSelectionCard(
+                    isAllWeek = isAllWeek,
+                    selectedDays = selectedDays,
+                    onAllWeekChange = { viewModel.setAllWeek(it) },
+                    onDayToggle = { viewModel.toggleDay(it) }
+                )
             }
-
-            Card {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "All Week",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Checkbox(
-                        checked = isAllWeek,
-                        onCheckedChange = { viewModel.setAllWeek(it) }
-                    )
-                }
-            }
-
-            DayChipsRow(
-                selectedDays = selectedDays,
-                onDayToggle = { viewModel.toggleDay(it) }
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
 
             Button(
                 onClick = {
                     val config = viewModel.saveScheduleLimit()
                     onNavigateBack(config)
                 },
-                modifier = Modifier.fillMaxWidth()
+                enabled = isSaveEnabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text("Save")
             }
@@ -174,22 +184,28 @@ fun ScheduleLimitScreen(
     }
 
     if (showTimePicker && timePickerType != null) {
-        TimePickerDialog(
-            title = if (timePickerType == TimePickerType.FROM) "Select Start Time" else "Select End Time",
-            onDismiss = { showTimePicker = false },
-            onConfirm = { hour, minute ->
+        HourPickerDialog(
+            title = if (timePickerType == TimePickerType.FROM) "Select Start Hour" else "Select End Hour",
+            onDismiss = {
+                showTimePicker = false
+                timePickerType = null
+                pendingFromHour = null
+            },
+            onConfirm = { hour ->
                 when (timePickerType) {
                     TimePickerType.FROM -> {
-                        pendingFromTime = Pair(hour, minute)
+                        pendingFromHour = hour
                         timePickerType = TimePickerType.TO
                     }
                     TimePickerType.TO -> {
-                        pendingFromTime?.let { (fromHour, fromMinute) ->
-                            viewModel.addTimeSlot(fromHour, fromMinute, hour, minute)
+                        pendingFromHour?.let { fromHour ->
+                            val success = viewModel.validateAndAddTimeSlot(fromHour, hour)
+                            if (success) {
+                                pendingFromHour = null
+                                timePickerType = null
+                                showTimePicker = false
+                            }
                         }
-                        pendingFromTime = null
-                        timePickerType = null
-                        showTimePicker = false
                     }
                     null -> {}
                 }
@@ -200,10 +216,10 @@ fun ScheduleLimitScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimePickerDialog(
+private fun HourPickerDialog(
     title: String,
     onDismiss: () -> Unit,
-    onConfirm: (Int, Int) -> Unit
+    onConfirm: (Int) -> Unit
 ) {
     val timePickerState = rememberTimePickerState()
 
@@ -215,7 +231,7 @@ private fun TimePickerDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                onConfirm(timePickerState.hour, timePickerState.minute)
+                onConfirm(timePickerState.hour)
             }) {
                 Text("OK")
             }
@@ -226,35 +242,6 @@ private fun TimePickerDialog(
             }
         }
     )
-}
-
-@Composable
-private fun DayChipsRow(
-    selectedDays: Set<DayOfWeek>,
-    onDayToggle: (DayOfWeek) -> Unit
-) {
-    val days = listOf(
-        DayOfWeek.MON to "Mon",
-        DayOfWeek.TUE to "Tue",
-        DayOfWeek.WED to "Wed",
-        DayOfWeek.THU to "Thu",
-        DayOfWeek.FRI to "Fri",
-        DayOfWeek.SAT to "Sat",
-        DayOfWeek.SUN to "Sun"
-    )
-
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        days.forEach { (day, label) ->
-            FilterChip(
-                selected = day in selectedDays,
-                onClick = { onDayToggle(day) },
-                label = { Text(label) }
-            )
-        }
-    }
 }
 
 private enum class TimePickerType {
