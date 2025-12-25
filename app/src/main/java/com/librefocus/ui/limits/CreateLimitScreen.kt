@@ -30,10 +30,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.librefocus.ui.appselection.AppSelectionBottomSheet
 import com.librefocus.ui.common.AppScaffold
-import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,7 +60,6 @@ fun CreateLimitScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showAppSelection by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
 
     BackHandler {
         if (hasChanges) {
@@ -132,14 +130,13 @@ fun CreateLimitScreen(
                     if (success) {
                         onNavigateBack()
                     } else {
-                        coroutineScope.launch {
+                        LaunchedEffect(Unit) {
                             val errorMessage = when {
                                 validationErrors.nameError -> "Please enter a limit name"
                                 validationErrors.limitTypeError -> "Please set a limit"
                                 validationErrors.appsError -> "Please select at least one app"
                                 else -> "Please fix all errors"
                             }
-
                             snackbarHostState.showSnackbar(errorMessage)
                         }
                     }
