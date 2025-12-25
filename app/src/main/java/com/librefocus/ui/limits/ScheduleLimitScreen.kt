@@ -36,31 +36,48 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.librefocus.models.TimeFormat
 import com.librefocus.ui.common.AppScaffold
 import com.librefocus.ui.common.PrimaryActionButton
+import com.librefocus.utils.DateTimeFormatterManager
 import org.koin.androidx.compose.koinViewModel
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
+import org.koin.compose.koinInject
+import java.time.Instant
+import java.time.ZoneId
+import android.text.format.DateFormat as AndroidDateFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleLimitScreen(
     onNavigateBack: (LimitConfiguration.Schedule?) -> Unit,
-    viewModel: ScheduleLimitViewModel = koinViewModel()
+    viewModel: ScheduleLimitViewModel = koinViewModel(),
+    formatterManager: DateTimeFormatterManager = koinInject()
 ) {
+    val context = LocalContext.current
     val isAllDay by viewModel.isAllDayState.collectAsStateWithLifecycle()
     val timeSlots by viewModel.timeSlotsState.collectAsStateWithLifecycle()
     val selectedDays by viewModel.selectedDaysState.collectAsStateWithLifecycle()
     val isAllWeek by viewModel.isAllWeekState.collectAsStateWithLifecycle()
     val isSaveEnabled by viewModel.isSaveEnabled.collectAsStateWithLifecycle()
     val validationError by viewModel.validationErrorState.collectAsStateWithLifecycle()
+    val dateTimePreferences by viewModel.dateTimePreferences.collectAsStateWithLifecycle()
+    val formattedPrefs by formatterManager.formattedPreferences.collectAsStateWithLifecycle(initialValue = null)
 
     var showTimePicker by remember { mutableStateOf(false) }
     var timePickerType by remember { mutableStateOf<TimePickerType?>(null) }
     var pendingFromHour by remember { mutableStateOf<Int?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val is24Hour = remember(dateTimePreferences, context) {
+        when (dateTimePreferences.getEffectiveTimeFormat()) {
+            TimeFormat.SYSTEM -> AndroidDateFormat.is24HourFormat(context)
+            TimeFormat.TWELVE_HOUR -> false
+            TimeFormat.TWENTY_FOUR_HOUR -> true
+        }
+    }
 
     LaunchedEffect(validationError) {
         validationError?.let {
@@ -135,7 +152,13 @@ fun ScheduleLimitScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "${formatMinutesToTime(slot.fromHour)} – ${formatMinutesToTime(slot.toHour)}",
+                                            text = formattedPrefs?.let {
+                                                val fromTime = Instant.ofEpochMilli(slot.fromHour * 60000L)
+                                                    .atZone(ZoneId.systemDefault())
+                                                val toTime = Instant.ofEpochMilli(slot.toHour * 60000L)
+                                                    .atZone(ZoneId.systemDefault())
+                                                "${it.timeFormatter.format(fromTime)} – ${it.timeFormatter.format(toTime)}"
+                                            } ?: "${slot.fromHour / 60}:00 – ${slot.toHour / 60}:00",
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                         IconButton(onClick = { viewModel.removeTimeSlot(index) }) {
@@ -183,6 +206,7 @@ fun ScheduleLimitScreen(
     if (showTimePicker && timePickerType != null) {
         HourPickerDialog(
             title = if (timePickerType == TimePickerType.FROM) "Select Start Hour" else "Select End Hour",
+            is24Hour = is24Hour,
             onDismiss = {
                 showTimePicker = false
                 timePickerType = null
@@ -215,10 +239,11 @@ fun ScheduleLimitScreen(
 @Composable
 private fun HourPickerDialog(
     title: String,
+    is24Hour: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    val timePickerState = rememberTimePickerState()
+    val timePickerState = rememberTimePickerState(is24Hour = is24Hour)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -243,11 +268,4 @@ private fun HourPickerDialog(
 
 private enum class TimePickerType {
     FROM, TO
-}
-
-private fun formatMinutesToTime(totalMinutes: Int): String {
-    val hours = totalMinutes / 60
-    val minutes = totalMinutes % 60
-    val time = LocalTime.of(hours, minutes)
-    return time.format(DateTimeFormatter.ofPattern("hh:mm a"))
 }

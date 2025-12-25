@@ -7,6 +7,8 @@ import com.librefocus.models.ResetPeriod
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 
 class LaunchCountLimitViewModel(
     private val savedStateHandle: SavedStateHandle
@@ -24,8 +26,30 @@ class LaunchCountLimitViewModel(
     private val _isAllWeekState = MutableStateFlow(true)
     val isAllWeekState: StateFlow<Boolean> = _isAllWeekState.asStateFlow()
 
+    private val _validationErrorState = MutableStateFlow<String?>(null)
+    val validationErrorState: StateFlow<String?> = _validationErrorState.asStateFlow()
+
+    val isSaveEnabled: StateFlow<Boolean> = combine(
+        _maxLaunchesState,
+        _selectedDaysState
+    ) { maxLaunches, selectedDays ->
+        maxLaunches > 0 && selectedDays.isNotEmpty()
+    }.stateIn(
+        scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default),
+        started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
+
     fun setMaxLaunches(count: Int) {
-        _maxLaunchesState.value = count.coerceAtLeast(0)
+        _maxLaunchesState.value = count.coerceAtLeast(1)
+    }
+
+    fun incrementLaunches() {
+        _maxLaunchesState.value = (_maxLaunchesState.value + 1).coerceAtMost(999)
+    }
+
+    fun decrementLaunches() {
+        _maxLaunchesState.value = (_maxLaunchesState.value - 1).coerceAtLeast(1)
     }
 
     fun setResetPeriod(period: ResetPeriod) {
@@ -34,10 +58,8 @@ class LaunchCountLimitViewModel(
 
     fun setAllWeek(isAllWeek: Boolean) {
         _isAllWeekState.value = isAllWeek
-        _selectedDaysState.value = if (isAllWeek) {
-            DayOfWeek.entries.toSet()
-        } else {
-            emptySet()
+        if (isAllWeek) {
+            _selectedDaysState.value = DayOfWeek.entries.toSet()
         }
     }
 
@@ -52,7 +74,20 @@ class LaunchCountLimitViewModel(
         _isAllWeekState.value = currentDays.size == 7
     }
 
-    fun saveLaunchCountLimit(): LimitConfiguration.LaunchCount {
+    fun clearValidationError() {
+        _validationErrorState.value = null
+    }
+
+    fun validateAndSave(): LimitConfiguration.LaunchCount? {
+        if (_selectedDaysState.value.isEmpty()) {
+            _validationErrorState.value = "Please select at least one weekday"
+            return null
+        }
+        if (_maxLaunchesState.value <= 0) {
+            _validationErrorState.value = "Launch count must be greater than zero"
+            return null
+        }
+        
         return LimitConfiguration.LaunchCount(
             maxLaunches = _maxLaunchesState.value,
             resetPeriod = _resetPeriodState.value,

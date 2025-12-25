@@ -2,14 +2,11 @@ package com.librefocus.ui.limits
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -18,23 +15,26 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.commandiron.wheel_picker_compose.WheelTimePicker
-import com.commandiron.wheel_picker_compose.core.TimeFormat
 import com.librefocus.models.UsageLimitType
 import com.librefocus.ui.common.AppScaffold
 import com.librefocus.ui.common.PrimaryActionButton
 import org.koin.androidx.compose.koinViewModel
-import java.time.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,10 +43,20 @@ fun UsageLimitScreen(
     viewModel: UsageLimitViewModel = koinViewModel()
 ) {
     val limitType by viewModel.limitTypeState.collectAsStateWithLifecycle()
-    val hours by viewModel.hoursState.collectAsStateWithLifecycle()
-    val minutes by viewModel.minutesState.collectAsStateWithLifecycle()
+    val minutesInput by viewModel.minutesInputState.collectAsStateWithLifecycle()
     val selectedDays by viewModel.selectedDaysState.collectAsStateWithLifecycle()
     val isAllWeek by viewModel.isAllWeekState.collectAsStateWithLifecycle()
+    val isSaveEnabled by viewModel.isSaveEnabled.collectAsStateWithLifecycle()
+    val validationError by viewModel.validationErrorState.collectAsStateWithLifecycle()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(validationError) {
+        validationError?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearValidationError()
+        }
+    }
 
     AppScaffold(
         topBar = {
@@ -58,7 +68,8 @@ fun UsageLimitScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues, _ ->
         Column(
             modifier = Modifier
@@ -72,67 +83,59 @@ fun UsageLimitScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "Duration Type",
-                    style = MaterialTheme.typography.titleSmall
-                )
-
-                Card {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = limitType == UsageLimitType.DAILY,
-                                onClick = { viewModel.setLimitType(UsageLimitType.DAILY) }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Daily")
-                        }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = limitType == UsageLimitType.HOURLY,
-                                onClick = { viewModel.setLimitType(UsageLimitType.HOURLY) }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Hourly")
-                        }
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    SegmentedButton(
+                        selected = limitType == UsageLimitType.DAILY,
+                        onClick = { viewModel.setLimitType(UsageLimitType.DAILY) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                    ) {
+                        Text("Daily")
+                    }
+                    SegmentedButton(
+                        selected = limitType == UsageLimitType.HOURLY,
+                        onClick = { viewModel.setLimitType(UsageLimitType.HOURLY) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                    ) {
+                        Text("Hourly")
                     }
                 }
-
-                Text(
-                    text = "Time Limit",
-                    style = MaterialTheme.typography.titleSmall
-                )
 
                 Card {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        WheelTimePicker(
-                            startTime = LocalTime.of(hours, minutes),
-                            timeFormat = TimeFormat.HOUR_24,
-                            size = DpSize(200.dp, 150.dp),
-                            textStyle = MaterialTheme.typography.titleMedium,
-                            onSnappedTime = { time ->
-                                viewModel.setTime(time.hour, time.minute)
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = formatDuration(hours, minutes, limitType),
-                            style = MaterialTheme.typography.bodyLarge
+                            text = if (limitType == UsageLimitType.DAILY) "Daily Time Limit" else "Hourly Time Limit",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        
+                        OutlinedTextField(
+                            value = minutesInput,
+                            onValueChange = { viewModel.setMinutesInput(it) },
+                            label = { 
+                                Text(
+                                    if (limitType == UsageLimitType.DAILY) 
+                                        "Minutes per day" 
+                                    else 
+                                        "Minutes per hour (0-59)"
+                                )
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            supportingText = {
+                                Text(
+                                    if (limitType == UsageLimitType.DAILY)
+                                        "Total minutes allowed per day"
+                                    else
+                                        "Minutes allowed in each hour (max 59)"
+                                )
+                            }
                         )
                     }
                 }
@@ -147,9 +150,12 @@ fun UsageLimitScreen(
 
             PrimaryActionButton(
                 onClick = {
-                    val config = viewModel.saveUsageLimit()
-                    onNavigateBack(config)
+                    val config = viewModel.validateAndSave()
+                    if (config != null) {
+                        onNavigateBack(config)
+                    }
                 },
+                enabled = isSaveEnabled,
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
@@ -157,18 +163,4 @@ fun UsageLimitScreen(
             }
         }
     }
-}
-
-private fun formatDuration(hours: Int, minutes: Int, type: UsageLimitType): String {
-    val parts = mutableListOf<String>()
-    if (hours > 0) parts.add("$hours hour${if (hours != 1) "s" else ""}")
-    if (minutes > 0) parts.add("$minutes minute${if (minutes != 1) "s" else ""}")
-    
-    val duration = parts.joinToString(" ")
-    val typeSuffix = when (type) {
-        UsageLimitType.DAILY -> "day"
-        UsageLimitType.HOURLY -> "hour"
-    }
-    
-    return "$duration / $typeSuffix"
 }

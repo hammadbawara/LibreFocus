@@ -2,6 +2,9 @@ package com.librefocus.ui.limits
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.librefocus.data.repository.PreferencesRepository
+import com.librefocus.models.DateTimePreferences
 import com.librefocus.models.DayOfWeek
 import com.librefocus.models.TimeSlot
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,8 +18,16 @@ data class TimeSlotValidationError(
 )
 
 class ScheduleLimitViewModel(
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
+    private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
+
+    val dateTimePreferences: StateFlow<DateTimePreferences> = preferencesRepository.dateTimePreferences
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+            initialValue = DateTimePreferences()
+        )
 
     private val _isAllDayState = MutableStateFlow(true)
     val isAllDayState: StateFlow<Boolean> = _isAllDayState.asStateFlow()
