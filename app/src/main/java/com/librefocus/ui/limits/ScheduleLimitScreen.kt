@@ -154,11 +154,6 @@ fun ScheduleLimitScreen(
                 }
             }
 
-            Text(
-                text = "Days",
-                style = MaterialTheme.typography.titleSmall
-            )
-
             DayChipsRow(
                 selectedDays = selectedDays,
                 onDayToggle = { viewModel.toggleDay(it) }

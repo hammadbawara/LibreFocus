@@ -143,7 +143,7 @@ fun CreateLimitScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.height(60.dp).fillMaxWidth(),
             ) {
                 Text(if (isEditMode) "Update Limit" else "Create Limit")
             }
