@@ -13,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,6 +32,7 @@ import com.commandiron.wheel_picker_compose.WheelTimePicker
 import com.commandiron.wheel_picker_compose.core.TimeFormat
 import com.librefocus.models.UsageLimitType
 import com.librefocus.ui.common.AppScaffold
+import com.librefocus.ui.common.PrimaryActionButton
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalTime
 
@@ -145,14 +145,12 @@ fun UsageLimitScreen(
                 )
             }
 
-            Button(
+            PrimaryActionButton(
                 onClick = {
                     val config = viewModel.saveUsageLimit()
                     onNavigateBack(config)
                 },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text("Save")

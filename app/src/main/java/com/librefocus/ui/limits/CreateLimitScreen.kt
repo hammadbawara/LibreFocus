@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.librefocus.ui.appselection.AppSelectionBottomSheet
 import com.librefocus.ui.common.AppScaffold
+import com.librefocus.ui.common.PrimaryActionButton
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -126,7 +126,7 @@ fun CreateLimitScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Button(
+            PrimaryActionButton(
                 onClick = {
                     val success = viewModel.validateAndSave()
                     if (success) {
@@ -142,8 +142,7 @@ fun CreateLimitScreen(
                             snackbarHostState.showSnackbar(errorMessage)
                         }
                     }
-                },
-                modifier = Modifier.height(60.dp).fillMaxWidth(),
+                }
             ) {
                 Text(if (isEditMode) "Update Limit" else "Create Limit")
             }
