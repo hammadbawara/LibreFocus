@@ -1,47 +1,50 @@
 package com.librefocus.ui.limits
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navigation
 
-@Composable
-fun LimitsScreen(
-    navController: NavController,
-    currentRoute: String?,
-    modifier: Modifier = Modifier
+const val LIMITS_GRAPH_ROUTE = "limits_graph"
+const val LIMIT_LIST_ROUTE = "limit_list"
+const val CREATE_LIMIT_ROUTE = "create_limit"
+const val CREATE_LIMIT_WITH_ID_ROUTE = "create_limit/{limitId}"
+const val SET_LIMIT_ROUTE = "set_limit"
+const val SCHEDULE_LIMIT_ROUTE = "schedule_limit"
+const val USAGE_LIMIT_ROUTE = "usage_limit"
+const val LAUNCH_COUNT_LIMIT_ROUTE = "launch_count_limit"
+
+fun NavGraphBuilder.limitsGraph(
+    navController: NavController
 ) {
-    val limitsNavController = rememberNavController()
-    
-    NavHost(
-        navController = limitsNavController,
+    navigation(
         startDestination = LIMIT_LIST_ROUTE,
-        modifier = modifier
+        route = LIMITS_GRAPH_ROUTE
     ) {
         composable(LIMIT_LIST_ROUTE) {
             LimitListScreen(
                 onNavigateToCreate = { limitId ->
                     if (limitId != null) {
-                        limitsNavController.navigate("create_limit/$limitId")
+                        navController.navigate("create_limit/$limitId")
                     } else {
-                        limitsNavController.navigate(CREATE_LIMIT_ROUTE)
+                        navController.navigate(CREATE_LIMIT_ROUTE)
                     }
                 }
             )
         }
 
-        composable(CREATE_LIMIT_ROUTE) {
+        composable(
+            route = CREATE_LIMIT_ROUTE
+        ) {
             CreateLimitScreen(
                 onNavigateBack = {
-                    limitsNavController.navigateUp()
+                    navController.navigateUp()
                 },
                 onNavigateToSetLimit = {
-                    limitsNavController.navigate(SET_LIMIT_ROUTE)
+                    navController.navigate(SET_LIMIT_ROUTE)
                 }
             )
         }
@@ -54,10 +57,10 @@ fun LimitsScreen(
         ) {
             CreateLimitScreen(
                 onNavigateBack = {
-                    limitsNavController.navigateUp()
+                    navController.navigateUp()
                 },
                 onNavigateToSetLimit = {
-                    limitsNavController.navigate(SET_LIMIT_ROUTE)
+                    navController.navigate(SET_LIMIT_ROUTE)
                 }
             )
         }
@@ -65,23 +68,23 @@ fun LimitsScreen(
         composable(SET_LIMIT_ROUTE) {
             SetLimitScreen(
                 onNavigateBack = {
-                    limitsNavController.navigateUp()
+                    navController.navigateUp()
                 },
                 onNavigateToSchedule = {
-                    limitsNavController.navigate(SCHEDULE_LIMIT_ROUTE)
+                    navController.navigate(SCHEDULE_LIMIT_ROUTE)
                 },
                 onNavigateToUsage = {
-                    limitsNavController.navigate(USAGE_LIMIT_ROUTE)
+                    navController.navigate(USAGE_LIMIT_ROUTE)
                 },
                 onNavigateToLaunchCount = {
-                    limitsNavController.navigate(LAUNCH_COUNT_LIMIT_ROUTE)
+                    navController.navigate(LAUNCH_COUNT_LIMIT_ROUTE)
                 }
             )
         }
 
         composable(SCHEDULE_LIMIT_ROUTE) {
             val parentEntry = remember(it) {
-                limitsNavController.getBackStackEntry(CREATE_LIMIT_ROUTE)
+                navController.getBackStackEntry(CREATE_LIMIT_ROUTE)
             }
             
             ScheduleLimitScreen(
@@ -89,14 +92,14 @@ fun LimitsScreen(
                     if (config != null) {
                         parentEntry.savedStateHandle["limit_config_result"] = config
                     }
-                    limitsNavController.popBackStack(CREATE_LIMIT_ROUTE, false)
+                    navController.popBackStack(CREATE_LIMIT_ROUTE, false)
                 }
             )
         }
 
         composable(USAGE_LIMIT_ROUTE) {
             val parentEntry = remember(it) {
-                limitsNavController.getBackStackEntry(CREATE_LIMIT_ROUTE)
+                navController.getBackStackEntry(CREATE_LIMIT_ROUTE)
             }
             
             UsageLimitScreen(
@@ -104,14 +107,14 @@ fun LimitsScreen(
                     if (config != null) {
                         parentEntry.savedStateHandle["limit_config_result"] = config
                     }
-                    limitsNavController.popBackStack(CREATE_LIMIT_ROUTE, false)
+                    navController.popBackStack(CREATE_LIMIT_ROUTE, false)
                 }
             )
         }
 
         composable(LAUNCH_COUNT_LIMIT_ROUTE) {
             val parentEntry = remember(it) {
-                limitsNavController.getBackStackEntry(CREATE_LIMIT_ROUTE)
+                navController.getBackStackEntry(CREATE_LIMIT_ROUTE)
             }
             
             LaunchCountLimitScreen(
@@ -119,7 +122,7 @@ fun LimitsScreen(
                     if (config != null) {
                         parentEntry.savedStateHandle["limit_config_result"] = config
                     }
-                    limitsNavController.popBackStack(CREATE_LIMIT_ROUTE, false)
+                    navController.popBackStack(CREATE_LIMIT_ROUTE, false)
                 }
             )
         }
