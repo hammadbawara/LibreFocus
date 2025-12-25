@@ -7,6 +7,7 @@ import com.librefocus.data.local.AppInfoProvider
 import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.data.local.database.UsageDatabase
 import com.librefocus.data.repository.CategoryRepository
+import com.librefocus.data.repository.LimitRepository
 import com.librefocus.data.repository.UsageTrackingRepository
 import org.koin.dsl.module
 
@@ -32,6 +33,7 @@ val databaseModule = module {
     single { get<UsageDatabase>().hourlyAppUsageDao() }
     single { get<UsageDatabase>().syncMetadataDao() }
     single { get<UsageDatabase>().dailyDeviceUsageDao() }
+    single { get<UsageDatabase>().limitDao() }
     
     // UsageStatsManager
     single {
@@ -69,6 +71,12 @@ val databaseModule = module {
         CategoryRepository(
             appCategoryDao = get(),
             appDao = get()
+        )
+    }
+    
+    single {
+        LimitRepository(
+            limitDao = get()
         )
     }
 }
