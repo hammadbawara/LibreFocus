@@ -3,7 +3,6 @@ package com.librefocus.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -93,9 +92,8 @@ fun NavGraph() {
             )
         }
         composable("set_limit") {
-            val createLimitEntry = remember(it) {
-                navController.getBackStackEntry("create_limit")
-            }
+            // Get the previous back stack entry (either create_limit or create_limit/{limitId})
+            val createLimitEntry = navController.previousBackStackEntry
             
             // Observe result from limit config screens
             LaunchedEffect(Unit) {
@@ -103,7 +101,7 @@ fun NavGraph() {
                 savedStateHandle?.getStateFlow<LimitConfiguration?>("limit_config_result", null)
                     ?.collect { config ->
                         if (config != null) {
-                            createLimitEntry.savedStateHandle["limit_config_result"] = config
+                            createLimitEntry?.savedStateHandle?.set("limit_config_result", config)
                             savedStateHandle.remove<LimitConfiguration?>("limit_config_result")
                             navController.navigateUp()
                         }
