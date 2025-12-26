@@ -1,6 +1,7 @@
 package com.librefocus.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.NavType
@@ -13,6 +14,7 @@ import com.librefocus.ui.categories.CategoryScreen
 import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.CreateLimitScreen
 import com.librefocus.ui.limits.LaunchCountLimitScreen
+import com.librefocus.ui.limits.LimitConfiguration
 import com.librefocus.ui.limits.LimitsScreen
 import com.librefocus.ui.limits.ScheduleLimitScreen
 import com.librefocus.ui.limits.SetLimitScreen
@@ -80,6 +82,23 @@ fun NavGraph() {
             )
         }
         composable("set_limit") {
+            val createLimitEntry = remember(it) {
+                navController.getBackStackEntry("create_limit")
+            }
+            
+            // Observe result from limit config screens
+            LaunchedEffect(Unit) {
+                val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+                savedStateHandle?.getStateFlow<LimitConfiguration?>("limit_config_result", null)
+                    ?.collect { config ->
+                        if (config != null) {
+                            createLimitEntry.savedStateHandle["limit_config_result"] = config
+                            savedStateHandle.remove<LimitConfiguration?>("limit_config_result")
+                            navController.navigateUp()
+                        }
+                    }
+            }
+            
             SetLimitScreen(
                 onNavigateBack = {
                     navController.navigateUp()
@@ -96,44 +115,32 @@ fun NavGraph() {
             )
         }
         composable("schedule_limit") {
-            val parentEntry = remember(it) {
-                navController.getBackStackEntry("create_limit")
-            }
-            
             ScheduleLimitScreen(
                 onNavigateBack = { config ->
                     if (config != null) {
-                        parentEntry.savedStateHandle["limit_config_result"] = config
+                        navController.previousBackStackEntry?.savedStateHandle?.set("limit_config_result", config)
                     }
-                    navController.popBackStack("create_limit", false)
+                    navController.navigateUp()
                 }
             )
         }
         composable("usage_limit") {
-            val parentEntry = remember(it) {
-                navController.getBackStackEntry("create_limit")
-            }
-            
             UsageLimitScreen(
                 onNavigateBack = { config ->
                     if (config != null) {
-                        parentEntry.savedStateHandle["limit_config_result"] = config
+                        navController.previousBackStackEntry?.savedStateHandle?.set("limit_config_result", config)
                     }
-                    navController.popBackStack("create_limit", false)
+                    navController.navigateUp()
                 }
             )
         }
         composable("launch_count_limit") {
-            val parentEntry = remember(it) {
-                navController.getBackStackEntry("create_limit")
-            }
-            
             LaunchCountLimitScreen(
                 onNavigateBack = { config ->
                     if (config != null) {
-                        parentEntry.savedStateHandle["limit_config_result"] = config
+                        navController.previousBackStackEntry?.savedStateHandle?.set("limit_config_result", config)
                     }
-                    navController.popBackStack("create_limit", false)
+                    navController.navigateUp()
                 }
             )
         }
