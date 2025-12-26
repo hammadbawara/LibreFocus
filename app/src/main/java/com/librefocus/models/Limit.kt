@@ -1,5 +1,8 @@
 package com.librefocus.models
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
 /**
  * Domain model representing an app usage limit.
  * Supports three types: Schedule-based, Usage-based, and Launch count-based limits.
@@ -61,10 +64,11 @@ sealed class Limit {
 /**
  * Represents a time slot with start and end hours (24-hour format).
  */
+@Parcelize
 data class TimeSlot(
     val fromHour: Int,
     val toHour: Int
-)
+) : Parcelable
 
 enum class DayOfWeek {
     MON, TUE, WED, THU, FRI, SAT, SUN

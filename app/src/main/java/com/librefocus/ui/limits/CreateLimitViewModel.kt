@@ -1,5 +1,6 @@
 package com.librefocus.ui.limits
 
+import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.parcelize.Parcelize
 
 data class ValidationErrors(
     val nameError: Boolean = false,
@@ -23,19 +25,22 @@ data class ValidationErrors(
     val appsError: Boolean = false
 )
 
-sealed class LimitConfiguration {
+sealed class LimitConfiguration : Parcelable {
+    @Parcelize
     data class Schedule(
         val isAllDay: Boolean,
         val timeSlots: List<TimeSlot>,
         val selectedDays: Set<DayOfWeek>
     ) : LimitConfiguration()
 
+    @Parcelize
     data class Usage(
         val limitType: UsageLimitType,
         val durationMinutes: Int,
         val selectedDays: Set<DayOfWeek>
     ) : LimitConfiguration()
 
+    @Parcelize
     data class LaunchCount(
         val maxLaunches: Int,
         val resetPeriod: ResetPeriod,
