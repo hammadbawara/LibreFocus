@@ -49,8 +49,14 @@ import org.koin.androidx.compose.koinViewModel
 fun CreateLimitScreen(
     onNavigateBack: () -> Unit,
     onNavigateToSetLimit: () -> Unit,
+    limitConfigResult: LimitConfiguration? = null,
     viewModel: CreateLimitViewModel = koinViewModel()
 ) {
+    // Update configuration when received from navigation
+    limitConfigResult?.let {
+        viewModel.setLimitConfiguration(it)
+    }
+    
     val limitName by viewModel.limitNameState.collectAsStateWithLifecycle()
     val selectedApps by viewModel.selectedAppsState.collectAsStateWithLifecycle()
     val limitConfig by viewModel.limitConfigurationState.collectAsStateWithLifecycle()

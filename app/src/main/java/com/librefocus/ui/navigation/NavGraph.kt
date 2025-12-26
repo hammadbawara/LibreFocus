@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -57,13 +58,18 @@ fun NavGraph() {
             )
         }
         composable("create_limit") {
+            val savedStateHandle = it.savedStateHandle
+            val limitConfigResult by savedStateHandle.getStateFlow<LimitConfiguration?>("limit_config_result", null)
+                .collectAsStateWithLifecycle(initialValue = null)
+            
             CreateLimitScreen(
                 onNavigateBack = {
                     navController.navigateUp()
                 },
                 onNavigateToSetLimit = {
                     navController.navigate("set_limit")
-                }
+                },
+                limitConfigResult = limitConfigResult
             )
         }
         composable(
@@ -72,13 +78,18 @@ fun NavGraph() {
                 navArgument("limitId") { type = NavType.StringType }
             )
         ) {
+            val savedStateHandle = it.savedStateHandle
+            val limitConfigResult by savedStateHandle.getStateFlow<LimitConfiguration?>("limit_config_result", null)
+                .collectAsStateWithLifecycle(initialValue = null)
+            
             CreateLimitScreen(
                 onNavigateBack = {
                     navController.navigateUp()
                 },
                 onNavigateToSetLimit = {
                     navController.navigate("set_limit")
-                }
+                },
+                limitConfigResult = limitConfigResult
             )
         }
         composable("set_limit") {

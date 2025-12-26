@@ -81,19 +81,6 @@ class CreateLimitViewModel(
                 _limitNameState.value = "Limit ${getNextLimitNumber()}"
             }
         }
-        
-        savedStateHandle.getStateFlow<LimitConfiguration?>("limit_config_result", null)
-            .also { flow ->
-                viewModelScope.launch {
-                    flow.collect { config ->
-                        config?.let {
-                            _limitConfigurationState.value = it
-                            _hasChangesState.value = true
-                            savedStateHandle.remove<LimitConfiguration?>("limit_config_result")
-                        }
-                    }
-                }
-            }
     }
 
     private fun loadLimit(id: String) {
