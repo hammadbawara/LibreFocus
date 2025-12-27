@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -20,14 +19,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.librefocus.ui.appselection.AppSelectionBottomSheet
 import com.librefocus.ui.common.AppScaffold
+import com.librefocus.ui.common.AppTopAppBar
 import com.librefocus.ui.common.PrimaryActionButton
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -78,24 +76,16 @@ fun CreateLimitScreen(
     }
 
     AppScaffold(
-        topBar = {
-            TopAppBar(
+        topBar = { scrollBehavior ->
+            AppTopAppBar(
                 title = { Text(if (isEditMode) "Edit Limit" else "Create Limit") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (hasChanges) {
-                            showDiscardDialog = true
-                        } else {
-                            onNavigateBack()
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                showNavigationIcon = true,
+                onClickNavigationIcon = onNavigateBack,
+                scrollBehavior = scrollBehavior
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues, _ ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

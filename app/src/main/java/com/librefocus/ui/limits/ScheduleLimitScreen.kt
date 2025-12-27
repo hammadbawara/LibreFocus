@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -26,7 +25,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.librefocus.models.TimeFormat
 import com.librefocus.ui.common.AppScaffold
+import com.librefocus.ui.common.AppTopAppBar
 import com.librefocus.ui.common.PrimaryActionButton
 import com.librefocus.utils.DateTimeFormatterManager
 import org.koin.androidx.compose.koinViewModel
@@ -87,18 +86,16 @@ fun ScheduleLimitScreen(
     }
 
     AppScaffold(
-        topBar = {
-            TopAppBar(
+        topBar = { scrollBehavior ->
+            AppTopAppBar(
                 title = { Text("Schedule Limit") },
-                navigationIcon = {
-                    IconButton(onClick = { onNavigateBack(null) }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                showNavigationIcon = true,
+                onClickNavigationIcon = {onNavigateBack(null)},
+                scrollBehavior = scrollBehavior
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues, _ ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

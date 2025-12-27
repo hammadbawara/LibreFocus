@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -25,7 +24,6 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -47,22 +45,20 @@ fun LimitsScreen(
     viewModel: LimitsViewModel = koinViewModel()
 ) {
     val limits by viewModel.limitsState.collectAsStateWithLifecycle()
-    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
 
     AppScaffold(
         modifier = modifier,
-        topBar = {
+        topBar = { scrollBehavior->
             LargeTopAppBar(
                 title = { Text("Limits") },
-                scrollBehavior = topAppBarScrollBehavior
+                scrollBehavior = scrollBehavior
             )
         },
-        bottomBar = {
+        bottomBar = { scrollBehavior ->
             AppBottomNavigationBar(
                 navController = navController,
                 currentRoute = currentRoute,
-                scrollBehavior = bottomBarScrollBehavior
+                scrollBehavior = scrollBehavior
             )
         },
         floatingActionButton = {
@@ -72,10 +68,8 @@ fun LimitsScreen(
                 Icon(Icons.Default.Add, contentDescription = "Create limit")
             }
         },
-        topAppBarScrollBehavior = topAppBarScrollBehavior,
-        bottomBarScrollBehavior = bottomBarScrollBehavior,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues, scrollModifier ->
+    ) { paddingValues ->
         if (limits.isEmpty()) {
             EmptyLimitsState(
                 modifier = Modifier
@@ -86,8 +80,7 @@ fun LimitsScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .then(scrollModifier),
+                    .padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
