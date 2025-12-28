@@ -17,3 +17,7 @@ temp/*
 .idea/copilot*
 gitignore/*
 .idea/studiobot.xml
+
+# Kotlin compiler output
+*.class
+META-INF/
