@@ -74,5 +74,67 @@ class AppInfoProvider(
             return@withContext ApplicationInfo.CATEGORY_UNDEFINED
         }
     }
+
+    /**
+     * Data class to hold basic information about an installed app.
+     */
+    data class InstalledAppInfo(
+        val packageName: String,
+        val appName: String,
+        val category: String
+    )
+
+    /**
+     * Fetches all installed non-system apps.
+     *
+     * @return List of installed apps with their basic information
+     */
+    suspend fun getInstalledApps(): List<InstalledAppInfo> = withContext(Dispatchers.IO) {
+        try {
+            val packageManager = context.packageManager
+            val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            
+            packages
+                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+                .mapNotNull { appInfo ->
+                    try {
+                        val appName = packageManager.getApplicationLabel(appInfo).toString()
+                        val category = getAppCategoryInternal(appInfo)
+                        
+                        InstalledAppInfo(
+                            packageName = appInfo.packageName,
+                            appName = appName,
+                            category = category
+                        )
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error getting info for package: ${appInfo.packageName}", e)
+                        null
+                    }
+                }
+                .sortedBy { it.appName.lowercase() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching installed apps", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Internal helper to get category from ApplicationInfo object.
+     */
+    private fun getAppCategoryInternal(applicationInfo: ApplicationInfo): String {
+        return try {
+            val appCategory = applicationInfo.category
+            
+            if (appCategory == ApplicationInfo.CATEGORY_UNDEFINED) {
+                return "Uncategorized"
+            }
+            
+            val categoryTitle = ApplicationInfo.getCategoryTitle(context, appCategory)
+            categoryTitle?.toString() ?: "Uncategorized"
+        } catch (e: Exception) {
+            Log.w(TAG, "Error getting category for app", e)
+            "Uncategorized"
+        }
+    }
 }
 

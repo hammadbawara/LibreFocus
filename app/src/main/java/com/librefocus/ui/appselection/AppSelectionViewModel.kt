@@ -1,22 +1,25 @@
 package com.librefocus.ui.appselection
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.librefocus.models.AppCategory
+import com.librefocus.data.local.AppInfoProvider
+import com.librefocus.data.repository.CategoryRepository
 import com.librefocus.models.InstalledApp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class AppSelectionViewModel(
     private val context: Context,
+    private val appInfoProvider: AppInfoProvider,
+    private val categoryRepository: CategoryRepository,
     private val allowMultipleSelection: Boolean = true,
     private val preSelectedPackages: Set<String> = emptySet()
 ) : ViewModel() {
@@ -38,10 +41,9 @@ class AppSelectionViewModel(
                 fetchInstalledApps()
             }
 
-            val categories = listOf("ALL") + apps
-                .map { it.category }
-                .distinct()
-                .sorted()
+            val categories = withContext(Dispatchers.IO) {
+                fetchCategories()
+            }
 
             _uiState.update {
                 it.copy(
@@ -54,59 +56,33 @@ class AppSelectionViewModel(
         }
     }
 
-    private fun fetchInstalledApps(): List<InstalledApp> {
+    private suspend fun fetchInstalledApps(): List<InstalledApp> {
         val packageManager = context.packageManager
-        val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+        val installedApps = appInfoProvider.getInstalledApps()
 
-        return packages
-            .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
-            .mapNotNull { appInfo ->
-                try {
-                    val appName = packageManager.getApplicationLabel(appInfo).toString()
-                    val icon = packageManager.getApplicationIcon(appInfo)
-                    val category = getCategoryForPackage(appInfo.packageName)
+        return installedApps.mapNotNull { appInfo ->
+            try {
+                val icon = packageManager.getApplicationIcon(appInfo.packageName)
 
-                    InstalledApp(
-                        packageName = appInfo.packageName,
-                        appName = appName,
-                        icon = icon,
-                        category = category
-                    )
-                } catch (e: Exception) {
-                    null
-                }
+                InstalledApp(
+                    packageName = appInfo.packageName,
+                    appName = appInfo.appName,
+                    icon = icon,
+                    category = appInfo.category
+                )
+            } catch (e: Exception) {
+                null
             }
-            .sortedBy { it.appName.lowercase() }
+        }
     }
 
-    private fun getCategoryForPackage(packageName: String): String {
-        return when {
-            packageName.contains("facebook") || packageName.contains("instagram") ||
-                    packageName.contains("twitter") || packageName.contains("snapchat") ||
-                    packageName.contains("tiktok") || packageName.contains("reddit") -> AppCategory.SOCIAL.displayName
-
-            packageName.contains("whatsapp") || packageName.contains("telegram") ||
-                    packageName.contains("messenger") || packageName.contains("discord") ||
-                    packageName.contains("skype") -> AppCategory.COMMUNICATION.displayName
-
-            packageName.contains("youtube") || packageName.contains("netflix") ||
-                    packageName.contains("spotify") || packageName.contains("twitch") ||
-                    packageName.contains("prime") -> AppCategory.ENTERTAINMENT.displayName
-
-            packageName.contains("game") || packageName.contains("pubg") ||
-                    packageName.contains("clash") || packageName.contains("candy") -> AppCategory.GAMES.displayName
-
-            packageName.contains("office") || packageName.contains("docs") ||
-                    packageName.contains("sheets") || packageName.contains("notion") ||
-                    packageName.contains("evernote") -> AppCategory.PRODUCTIVITY.displayName
-
-            packageName.contains("amazon") || packageName.contains("ebay") ||
-                    packageName.contains("shop") || packageName.contains("store") -> AppCategory.SHOPPING.displayName
-
-            packageName.contains("news") || packageName.contains("medium") ||
-                    packageName.contains("flipboard") -> AppCategory.NEWS.displayName
-
-            else -> AppCategory.OTHER.displayName
+    private suspend fun fetchCategories(): List<String> {
+        return try {
+            val categoryEntities = categoryRepository.getAllCategories().first()
+            val categoryNames = categoryEntities.map { it.categoryName }.sorted()
+            listOf("ALL") + categoryNames
+        } catch (e: Exception) {
+            listOf("ALL")
         }
     }
 
