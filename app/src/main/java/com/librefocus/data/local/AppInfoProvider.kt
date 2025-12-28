@@ -45,15 +45,7 @@ class AppInfoProvider(
         try {
             val pm = context.packageManager
             val applicationInfo = pm.getApplicationInfo(packageName, 0)
-            val appCategory = applicationInfo.category
-            
-            // If category is undefined, return default
-            if (appCategory == ApplicationInfo.CATEGORY_UNDEFINED) {
-                return@withContext "Uncategorized"
-            }
-            
-            val categoryTitle = ApplicationInfo.getCategoryTitle(context, appCategory)
-            return@withContext categoryTitle?.toString() ?: "Uncategorized"
+            return@withContext getAppCategoryInternal(applicationInfo)
         } catch (e: PackageManager.NameNotFoundException) {
             Log.w(TAG, "Category not found for package: $packageName", e)
             return@withContext "Uncategorized"
