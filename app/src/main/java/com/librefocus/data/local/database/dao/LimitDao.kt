@@ -164,6 +164,55 @@ interface LimitDao {
     
     @Query("SELECT EXISTS(SELECT 1 FROM limits WHERE id = :id)")
     suspend fun isLimitExists(id: String): Boolean
+    
+    // Synchronous methods for backup/restore operations
+    @Query("SELECT * FROM limits ORDER BY createdAt DESC")
+    fun getAllLimitsSync(): List<LimitEntity>
+    
+    @Query("SELECT * FROM schedule_limits")
+    fun getAllScheduleLimits(): kotlinx.coroutines.flow.Flow<List<ScheduleLimitEntity>>
+    
+    @Query("SELECT * FROM schedule_limits")
+    fun getAllScheduleLimitsSync(): List<ScheduleLimitEntity>
+    
+    @Query("SELECT * FROM usage_limits")
+    fun getAllUsageLimits(): kotlinx.coroutines.flow.Flow<List<UsageLimitEntity>>
+    
+    @Query("SELECT * FROM usage_limits")
+    fun getAllUsageLimitsSync(): List<UsageLimitEntity>
+    
+    @Query("SELECT * FROM launch_count_limits")
+    fun getAllLaunchCountLimits(): Flow<List<LaunchCountEntity>>
+    
+    @Query("SELECT * FROM launch_count_limits")
+    fun getAllLaunchCountLimitsSync(): List<LaunchCountEntity>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertLimitsSync(limits: List<LimitEntity>)
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertScheduleLimitsSync(scheduleLimits: List<ScheduleLimitEntity>)
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertUsageLimitsSync(usageLimits: List<UsageLimitEntity>)
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertLaunchCountLimitsSync(launchCountLimits: List<LaunchCountEntity>)
+    
+    @Query("DELETE FROM limits WHERE id = :id")
+    fun deleteLimitSync(id: String)
+    
+    @Query("DELETE FROM limits")
+    fun deleteAllLimits()
+    
+    @Query("DELETE FROM schedule_limits")
+    fun deleteAllScheduleLimits()
+    
+    @Query("DELETE FROM usage_limits")
+    fun deleteAllUsageLimits()
+    
+    @Query("DELETE FROM launch_count_limits")
+    fun deleteAllLaunchCountLimits()
 }
 
 /**

@@ -41,4 +41,17 @@ interface AppCategoryDao {
     
     @Query("DELETE FROM app_categories WHERE id = :categoryId")
     suspend fun deleteCategoryById(categoryId: Int)
+    
+    // Synchronous methods for backup/restore operations
+    @Query("SELECT * FROM app_categories ORDER BY categoryName ASC")
+    fun getAllCategoriesSync(): List<AppCategoryEntity>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertCategoriesSync(categories: List<AppCategoryEntity>): List<Long>
+    
+    @Query("DELETE FROM app_categories WHERE id = :categoryId")
+    fun deleteCategorySync(categoryId: Int)
+    
+    @Query("DELETE FROM app_categories")
+    fun deleteAllCategories()
 }

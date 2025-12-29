@@ -4,10 +4,12 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Entity for launch count-based limits (restrict number of app launches).
  */
+@Serializable
 @Entity(
     tableName = "launch_count_limits",
     foreignKeys = [

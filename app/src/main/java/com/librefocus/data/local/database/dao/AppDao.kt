@@ -44,4 +44,17 @@ interface AppDao {
     
     @Query("SELECT EXISTS(SELECT 1 FROM apps WHERE packageName = :packageName)")
     suspend fun isAppExists(packageName: String): Boolean
+    
+    // Synchronous methods for backup/restore operations
+    @Query("SELECT * FROM apps ORDER BY appName ASC")
+    fun getAllAppsSync(): List<AppEntity>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertAppsSync(apps: List<AppEntity>): List<Long>
+    
+    @Query("DELETE FROM apps WHERE id = :appId")
+    fun deleteAppSync(appId: Int)
+    
+    @Query("DELETE FROM apps")
+    fun deleteAllApps()
 }

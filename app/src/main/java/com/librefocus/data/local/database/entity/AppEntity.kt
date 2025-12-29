@@ -4,11 +4,13 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Represents an installed application tracked by LibreFocus.
  * Each app belongs to a category.
  */
+@Serializable
 @Entity(
     tableName = "apps",
     foreignKeys = [

@@ -4,10 +4,12 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Entity for schedule-based limits. Contains time slots and days configuration.
  */
+@Serializable
 @Entity(
     tableName = "schedule_limits",
     foreignKeys = [

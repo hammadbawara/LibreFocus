@@ -7,6 +7,7 @@ import com.librefocus.data.local.AppInfoProvider
 import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.data.local.database.UsageDatabase
 import com.librefocus.data.repository.AppRepository
+import com.librefocus.data.repository.BackupRestoreRepository
 import com.librefocus.data.repository.CategoryRepository
 import com.librefocus.data.repository.LimitRepository
 import com.librefocus.data.repository.UsageTrackingRepository
@@ -85,6 +86,17 @@ val databaseModule = module {
     single {
         LimitRepository(
             limitDao = get()
+        )
+    }
+    
+    single {
+        BackupRestoreRepository(
+            context = get(),
+            database = get(),
+            appCategoryDao = get(),
+            appDao = get(),
+            hourlyAppUsageDao = get(),
+            syncMetadataDao = get()
         )
     }
 }

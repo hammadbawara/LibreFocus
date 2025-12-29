@@ -46,7 +46,13 @@ val statsModule = module {
 }
 
 val settingsModule = module {
-    viewModelOf(::SettingsViewModel)
+    viewModel {
+        SettingsViewModel(
+            preferencesRepository = get(),
+            dateTimeFormatterManager = get(),
+            backupRestoreRepository = get()
+        )
+    }
 }
 
 val appDetailModule = module {
