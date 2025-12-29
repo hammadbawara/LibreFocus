@@ -9,5 +9,6 @@ data class AppSelectionUiState(
     val selectedPackages: Set<String> = emptySet(),
     val searchQuery: String = "",
     val selectedCategory: String = "ALL",
-    val availableCategories: List<String> = emptyList()
+    val availableCategories: List<String> = emptyList(),
+    val error: String? = null
 )

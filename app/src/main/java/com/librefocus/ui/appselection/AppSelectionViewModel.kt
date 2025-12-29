@@ -1,22 +1,19 @@
 package com.librefocus.ui.appselection
 
-import android.content.Context
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.librefocus.models.AppCategory
-import com.librefocus.models.InstalledApp
-import kotlinx.coroutines.Dispatchers
+import com.librefocus.data.repository.AppRepository
+import com.librefocus.data.repository.CategoryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class AppSelectionViewModel(
-    private val context: Context,
+    private val appRepository: AppRepository,
+    private val categoryRepository: CategoryRepository,
     private val allowMultipleSelection: Boolean = true,
     private val preSelectedPackages: Set<String> = emptySet()
 ) : ViewModel() {
@@ -27,86 +24,37 @@ class AppSelectionViewModel(
     val uiState: StateFlow<AppSelectionUiState> = _uiState.asStateFlow()
 
     init {
-        loadInstalledApps()
+        loadData()
     }
 
-    private fun loadInstalledApps() {
+    private fun loadData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val apps = withContext(Dispatchers.IO) {
-                fetchInstalledApps()
-            }
+            try {
+                // Fetch installed apps from repository
+                val apps = appRepository.getInstalledApps()
 
-            val categories = listOf("ALL") + apps
-                .map { it.category }
-                .distinct()
-                .sorted()
+                // Fetch categories from repository
+                val categoryEntities = categoryRepository.getAllCategories().first()
+                val categories = listOf("ALL") + categoryEntities.map { it.categoryName }.sorted()
 
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    allApps = apps,
-                    filteredApps = apps,
-                    availableCategories = categories
-                )
-            }
-        }
-    }
-
-    private fun fetchInstalledApps(): List<InstalledApp> {
-        val packageManager = context.packageManager
-        val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-
-        return packages
-            .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
-            .mapNotNull { appInfo ->
-                try {
-                    val appName = packageManager.getApplicationLabel(appInfo).toString()
-                    val icon = packageManager.getApplicationIcon(appInfo)
-                    val category = getCategoryForPackage(appInfo.packageName)
-
-                    InstalledApp(
-                        packageName = appInfo.packageName,
-                        appName = appName,
-                        icon = icon,
-                        category = category
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        allApps = apps,
+                        filteredApps = apps,
+                        availableCategories = categories
                     )
-                } catch (e: Exception) {
-                    null
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = e.message ?: "Failed to load apps"
+                    )
                 }
             }
-            .sortedBy { it.appName.lowercase() }
-    }
-
-    private fun getCategoryForPackage(packageName: String): String {
-        return when {
-            packageName.contains("facebook") || packageName.contains("instagram") ||
-                    packageName.contains("twitter") || packageName.contains("snapchat") ||
-                    packageName.contains("tiktok") || packageName.contains("reddit") -> AppCategory.SOCIAL.displayName
-
-            packageName.contains("whatsapp") || packageName.contains("telegram") ||
-                    packageName.contains("messenger") || packageName.contains("discord") ||
-                    packageName.contains("skype") -> AppCategory.COMMUNICATION.displayName
-
-            packageName.contains("youtube") || packageName.contains("netflix") ||
-                    packageName.contains("spotify") || packageName.contains("twitch") ||
-                    packageName.contains("prime") -> AppCategory.ENTERTAINMENT.displayName
-
-            packageName.contains("game") || packageName.contains("pubg") ||
-                    packageName.contains("clash") || packageName.contains("candy") -> AppCategory.GAMES.displayName
-
-            packageName.contains("office") || packageName.contains("docs") ||
-                    packageName.contains("sheets") || packageName.contains("notion") ||
-                    packageName.contains("evernote") -> AppCategory.PRODUCTIVITY.displayName
-
-            packageName.contains("amazon") || packageName.contains("ebay") ||
-                    packageName.contains("shop") || packageName.contains("store") -> AppCategory.SHOPPING.displayName
-
-            packageName.contains("news") || packageName.contains("medium") ||
-                    packageName.contains("flipboard") -> AppCategory.NEWS.displayName
-
-            else -> AppCategory.OTHER.displayName
         }
     }
 
@@ -148,6 +96,10 @@ class AppSelectionViewModel(
         onSearchQueryChange("")
     }
 
+    suspend fun isAppInstalled(packageName: String): Boolean {
+        return appRepository.isAppInstalled(packageName)
+    }
+
     private fun filterApps() {
         val currentState = _uiState.value
         val query = currentState.searchQuery.lowercase().trim()
@@ -167,3 +119,4 @@ class AppSelectionViewModel(
         _uiState.update { it.copy(filteredApps = filtered) }
     }
 }
+

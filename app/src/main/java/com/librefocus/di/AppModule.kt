@@ -61,7 +61,8 @@ val categoryModule = module {
 val appSelectionModule = module {
     viewModel { params ->
         AppSelectionViewModel(
-            context = get(),
+            appRepository = get(),
+            categoryRepository = get(),
             allowMultipleSelection = params.get(),
             preSelectedPackages = params.get()
         )
