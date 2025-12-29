@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Schedule
@@ -104,6 +105,24 @@ fun SettingsScreen(
                         )
                     },
                     onClick = { showThemeDialog = true }
+                )
+            }
+            
+            SettingsGroup(
+                title = { Text("App Management") }
+            ) {
+                SettingsMenuLink(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Category,
+                            contentDescription = null
+                        )
+                    },
+                    title = { Text("Manage Categories") },
+                    subtitle = { Text("Organize apps into custom categories") },
+                    onClick = {
+                        navController.navigate("categories")
+                    }
                 )
             }
             

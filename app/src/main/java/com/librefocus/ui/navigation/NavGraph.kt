@@ -153,16 +153,10 @@ fun NavGraph() {
                 }
             )
         }
-        composable(Screen.Categories.route) {
+        composable("categories") {
             CategoryScreen(
                 onNavigateBack = {
-                    navController.navigate(Screen.Settings.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
+                    navController.navigateUp()
                 }
             )
         }
