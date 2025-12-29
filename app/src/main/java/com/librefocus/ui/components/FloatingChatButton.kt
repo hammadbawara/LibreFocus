@@ -21,7 +21,7 @@ fun FloatingChatButton(navController: NavController, modifier: Modifier = Modifi
             onClick = { navController.navigate("chatbot") },
             modifier = Modifier
                 .padding(16.dp)
-                .align(Alignment.BottomEnd)
+                .align(Alignment.BottomStart)
         ) {
             Icon(Icons.Filled.SmartToy, contentDescription = "Chat")
         }
