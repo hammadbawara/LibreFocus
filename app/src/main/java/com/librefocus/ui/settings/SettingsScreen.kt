@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,7 +24,6 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,35 +62,21 @@ fun SettingsScreen(
     var showTimeFormatDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var showTimeZoneDialog by remember { mutableStateOf(false) }
-
-    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
-
     AppScaffold(
-        topBar = {
+        topBar = { scrollBehavior->
             LargeTopAppBar(
                 title = { Text("Settings") },
-                scrollBehavior = topAppBarScrollBehavior
-//                navigationIcon = {
-//                    IconButton(onClick = onBackClick) {
-//                        Icon(
-//                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-//                            contentDescription = "Back"
-//                        )
-//                    }
-//                }
+                scrollBehavior = scrollBehavior
             )
         },
-        bottomBar = {
+        bottomBar = {scrollBehavior ->
             AppBottomNavigationBar(
                 navController = navController,
                 currentRoute = currentRoute,
-                scrollBehavior = bottomBarScrollBehavior
+                scrollBehavior = scrollBehavior
             )
-        },
-        topAppBarScrollBehavior = topAppBarScrollBehavior,
-        bottomBarScrollBehavior = bottomBarScrollBehavior
-    ) { paddingValues, scrollModifier ->
+        }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

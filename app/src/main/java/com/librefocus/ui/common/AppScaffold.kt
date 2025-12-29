@@ -1,24 +1,34 @@
 package com.librefocus.ui.common
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.BottomAppBarScrollBehavior
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Dp
 import androidx.navigation.NavController
 import com.librefocus.ui.navigation.Screen
 
@@ -32,9 +42,6 @@ import com.librefocus.ui.navigation.Screen
  * @param floatingActionButton Optional floating action button
  * @param floatingActionButtonPosition Position of the FAB (default: End)
  * @param snackbarHost Optional snackbar host. If null, a default one is provided
- * @param topAppBarScrollBehavior Optional scroll behavior for the top app bar
- * @param bottomBarScrollBehavior Optional scroll behavior for the bottom bar
- * @param showBottomBar Whether to show the bottom navigation bar (default: true)
  * @param contentWindowInsets Window insets for the content
  * @param content The main content of the screen. Receives paddingValues and scroll connection modifier
  */
@@ -42,47 +49,41 @@ import com.librefocus.ui.navigation.Screen
 @Composable
 fun AppScaffold(
     modifier: Modifier = Modifier,
-    topBar: @Composable () -> Unit = {},
-    bottomBar: @Composable () -> Unit = {},
+    topBar: @Composable (TopAppBarScrollBehavior?) -> Unit = {},
+    bottomBar: @Composable (BottomAppBarScrollBehavior?) -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     floatingActionButtonPosition: FabPosition = FabPosition.End,
     snackbarHost: @Composable () -> Unit = { SnackbarHost(hostState = remember { SnackbarHostState() }) },
-    topAppBarScrollBehavior: TopAppBarScrollBehavior? = null,
-    bottomBarScrollBehavior: BottomAppBarScrollBehavior? = null,
-    showBottomBar: Boolean = true,
     contentWindowInsets: WindowInsets = WindowInsets(0, 0, 0, 0),
-    content: @Composable (PaddingValues, Modifier) -> Unit
+    content: @Composable (PaddingValues) -> Unit
 ) {
+
+    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val bottomAppBarScrollBehavior: BottomAppBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
     // Collapse the top app bar by default
     LaunchedEffect(topAppBarScrollBehavior) {
-        topAppBarScrollBehavior?.state?.apply {
+        topAppBarScrollBehavior.state.apply {
             heightOffset = heightOffsetLimit
         }
     }
     
-    // Create a modifier that combines both scroll behaviors
-    val scrollModifier: Modifier = when {
-        topAppBarScrollBehavior != null && bottomBarScrollBehavior != null ->
-            Modifier
-                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
-                .nestedScroll(bottomBarScrollBehavior.nestedScrollConnection)
-        topAppBarScrollBehavior != null ->
-            Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
-        bottomBarScrollBehavior != null ->
-            Modifier.nestedScroll(bottomBarScrollBehavior.nestedScrollConnection)
-        else -> Modifier
-    }
-    
     Scaffold(
         modifier = modifier,
-        topBar = topBar,
-        bottomBar = if (showBottomBar) bottomBar else { {} },
+        topBar = { topBar(topAppBarScrollBehavior) },
+        bottomBar = {bottomBar(bottomAppBarScrollBehavior)},
         floatingActionButton = floatingActionButton,
         floatingActionButtonPosition = floatingActionButtonPosition,
         snackbarHost = snackbarHost,
         contentWindowInsets = contentWindowInsets
     ) { paddingValues ->
-        content(paddingValues, scrollModifier)
+        Box(
+            modifier = Modifier
+                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                .nestedScroll(bottomAppBarScrollBehavior.nestedScrollConnection)
+        ){
+            content(paddingValues)
+        }
+
     }
 }
 
@@ -99,7 +100,7 @@ fun AppScaffold(
 fun AppBottomNavigationBar(
     navController: NavController,
     currentRoute: String?,
-    scrollBehavior: BottomAppBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
+    scrollBehavior: BottomAppBarScrollBehavior? = null
 ) {
     val items = Screen.entries
 
@@ -133,4 +134,44 @@ fun AppBottomNavigationBar(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppTopAppBar(
+    title: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    showNavigationIcon: Boolean = false,
+    onClickNavigationIcon: () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    collapsedHeight: Dp = TopAppBarDefaults.LargeAppBarCollapsedHeight,
+    expandedHeight: Dp = TopAppBarDefaults.LargeAppBarExpandedHeight,
+    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+) {
+
+    LargeTopAppBar(
+        title = title,
+        modifier = modifier,
+        navigationIcon = {
+            if (showNavigationIcon) {
+                IconButton(
+                    onClick = onClickNavigationIcon,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Navigate Up"
+                    )
+                }
+            }
+        },
+        actions = actions,
+        collapsedHeight = collapsedHeight,
+        expandedHeight = expandedHeight,
+        windowInsets = windowInsets,
+        colors = colors,
+        scrollBehavior = scrollBehavior
+    )
+
 }

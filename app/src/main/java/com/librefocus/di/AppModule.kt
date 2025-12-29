@@ -4,6 +4,11 @@ import com.librefocus.ui.MainViewModel
 import com.librefocus.ui.appselection.AppSelectionViewModel
 import com.librefocus.ui.categories.CategoryViewModel
 import com.librefocus.ui.home.HomeViewModel
+import com.librefocus.ui.limits.CreateLimitViewModel
+import com.librefocus.ui.limits.LaunchCountLimitViewModel
+import com.librefocus.ui.limits.LimitsViewModel
+import com.librefocus.ui.limits.ScheduleLimitViewModel
+import com.librefocus.ui.limits.UsageLimitViewModel
 import com.librefocus.ui.onboarding.OnboardingViewModel
 import com.librefocus.ui.settings.SettingsViewModel
 import com.librefocus.ui.stats.AppDetailViewModel
@@ -67,4 +72,12 @@ val appSelectionModule = module {
             preSelectedPackages = params.get()
         )
     }
+}
+
+val limitsModule = module {
+    viewModelOf(::LimitsViewModel)
+    viewModelOf(::CreateLimitViewModel)
+    viewModelOf(::ScheduleLimitViewModel)
+    viewModelOf(::UsageLimitViewModel)
+    viewModelOf(::LaunchCountLimitViewModel)
 }

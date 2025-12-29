@@ -8,14 +8,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -64,28 +62,24 @@ fun StatsScreen(
         }
     }
 
-    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
     
     AppScaffold(
-        topBar = {
+        topBar = { scrollBehavior ->
             LargeTopAppBar(
                 title = { Text(text = stringResource(id = R.string.stats_title)) },
-                scrollBehavior = topAppBarScrollBehavior,
+                scrollBehavior = scrollBehavior,
             )
         },
-        bottomBar = {
+        bottomBar = { scrollBehavior ->
             AppBottomNavigationBar(
                 navController = navController,
                 currentRoute = currentRoute,
-                scrollBehavior = bottomBarScrollBehavior
+                scrollBehavior = scrollBehavior
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topAppBarScrollBehavior = topAppBarScrollBehavior,
-        bottomBarScrollBehavior = bottomBarScrollBehavior,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues, scrollModifier ->
+    ) { paddingValues ->
         ShowLoading (
             isLoading = isLoading,
         ) {
@@ -94,8 +88,7 @@ fun StatsScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .then(scrollModifier),
+                    .padding(paddingValues),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {

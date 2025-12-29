@@ -1,14 +1,12 @@
 package com.librefocus.ui.home
 
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -28,11 +26,9 @@ fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val bottomBarScrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
 
     AppScaffold(
-        topBar = {
+        topBar = { scrollBehavior->
             LargeTopAppBar(
                 title = { Text("Today's Usage") },
                 actions = {
@@ -53,19 +49,17 @@ fun HomeScreen(
                         }
                     }
                 },
-                scrollBehavior = topAppBarScrollBehavior
+                scrollBehavior = scrollBehavior
             )
         },
-        bottomBar = {
+        bottomBar = { scrollBehavior ->
             AppBottomNavigationBar(
                 navController = navController,
                 currentRoute = currentRoute,
-                scrollBehavior = bottomBarScrollBehavior
+                scrollBehavior = scrollBehavior
             )
         },
-        topAppBarScrollBehavior = topAppBarScrollBehavior,
-        bottomBarScrollBehavior = bottomBarScrollBehavior
-    ) { padding, scrollModifier ->
+    ) { padding ->
 
     }
 }

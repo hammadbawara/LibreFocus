@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -28,7 +27,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +37,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
@@ -62,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.librefocus.ui.common.AppScaffold
+import com.librefocus.ui.common.AppTopAppBar
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -269,21 +267,17 @@ fun CategoryListPane(
     onClearError: () -> Unit
 ) {
     val listState = rememberLazyListState()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val fabExpanded by remember {
         derivedStateOf { listState.firstVisibleItemIndex == 0 }
     }
     
     AppScaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = {
-            LargeTopAppBar(
+        topBar = { scrollBehavior ->
+            AppTopAppBar(
                 title = { Text("App Categories") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+                showNavigationIcon = true,
+                onClickNavigationIcon = onNavigateBack,
                 scrollBehavior = scrollBehavior
             )
         },
@@ -307,9 +301,7 @@ fun CategoryListPane(
                 }
             }
         },
-        topAppBarScrollBehavior = scrollBehavior,
-        showBottomBar = false
-    ) { paddingValues, scrollModifier ->
+    ) { paddingValues ->
         when {
             uiState.isLoading -> {
                 Box(
@@ -343,7 +335,6 @@ fun CategoryListPane(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .then(scrollModifier)
                 ) {
                     items(uiState.categories, key = { it.id }) { category ->
                         CategoryListItem(
@@ -456,21 +447,17 @@ fun CategoryDetailPane(
     onBack: () -> Unit
 ) {
     val listState = rememberLazyListState()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val fabExpanded by remember {
         derivedStateOf { listState.firstVisibleItemIndex == 0 }
     }
     
     AppScaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = {
-            LargeTopAppBar(
+        topBar = { scrollBehavior ->
+            AppTopAppBar(
                 title = { Text(category.name) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+                showNavigationIcon = true,
+                onClickNavigationIcon = onBack,
                 scrollBehavior = scrollBehavior
             )
         },
@@ -482,9 +469,7 @@ fun CategoryDetailPane(
                 text = { Text("Add App") }
             )
         },
-        topAppBarScrollBehavior = scrollBehavior,
-        showBottomBar = false
-    ) { paddingValues, scrollModifier ->
+    ) { paddingValues ->
         when {
             apps.isEmpty() -> {
                 Box(
@@ -507,7 +492,6 @@ fun CategoryDetailPane(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .then(scrollModifier)
                 ) {
                     items(apps, key = { it.id }) { app ->
                         AppListItem(

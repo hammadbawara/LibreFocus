@@ -12,16 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.librefocus.ui.common.AppScaffold
+import com.librefocus.ui.common.AppTopAppBar
 import com.librefocus.ui.common.ShowLoading
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -71,11 +66,9 @@ fun AppDetailScreen(
         }
     }
 
-    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-
     AppScaffold(
-        topBar = {
-            LargeTopAppBar(
+        topBar = { scrollBehavior ->
+            AppTopAppBar(
                 title = {
                     Row {
                         appIcon?.let { icon ->
@@ -96,22 +89,14 @@ fun AppDetailScreen(
                     }
 
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                scrollBehavior = topAppBarScrollBehavior,
+                showNavigationIcon = true,
+                onClickNavigationIcon = onBackClick,
+                scrollBehavior = scrollBehavior,
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topAppBarScrollBehavior = topAppBarScrollBehavior,
-        showBottomBar = false,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues, scrollModifier ->
+    ) { paddingValues ->
         ShowLoading(
             isLoading = uiState.isLoading,
         ) {
@@ -120,8 +105,7 @@ fun AppDetailScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .then(scrollModifier),
+                    .padding(paddingValues),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {

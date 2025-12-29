@@ -7,6 +7,7 @@ import com.librefocus.di.categoryModule
 import com.librefocus.di.dataStoreModule
 import com.librefocus.di.databaseModule
 import com.librefocus.di.homeModule
+import com.librefocus.di.limitsModule
 import com.librefocus.di.mainModule
 import com.librefocus.di.onboardingModule
 import com.librefocus.di.settingsModule
@@ -36,6 +37,7 @@ class LibreFocus: Application() {
                 appDetailModule,
                 categoryModule,
                 appSelectionModule,
+                limitsModule,
                 workerModule
             )
         }

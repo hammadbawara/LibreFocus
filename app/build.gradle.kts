@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     kotlin("plugin.serialization") version "2.0.21"
+    id("kotlin-parcelize")
 }
 
 android {
@@ -14,7 +15,7 @@ android {
         applicationId = "com.librefocus"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = 3
         versionName = "0.1-alpha"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
