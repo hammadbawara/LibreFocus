@@ -12,6 +12,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.librefocus.ui.categories.CategoryScreen
+import com.librefocus.ui.chatbot.ChatbotScreen
 import com.librefocus.ui.components.FloatingChatButton
 import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.CreateLimitScreen
@@ -208,10 +209,21 @@ fun NavGraph() {
                     onBackClick = { navController.navigateUp() }
                 )
             }
+
+            composable(
+                route = "chatbot"
+            ) {
+                ChatbotScreen(navController)
+            }
         }
 
-        FloatingChatButton(
-            navController
-        )
+
+
+        if (currentRoute != "chatbot") {
+            FloatingChatButton(
+                navController
+            )
+        }
+
     }
 }

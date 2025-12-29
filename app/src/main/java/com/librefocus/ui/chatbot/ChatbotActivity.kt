@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.librefocus.ui.theme.LibreFocusTheme
+import org.koin.androidx.compose.koinViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class ChatbotActivity : ComponentActivity() {
@@ -58,7 +60,10 @@ class ChatbotActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatbotScreen(navController: NavController, viewModel: ChatViewModel) {
+fun ChatbotScreen(
+    navController: NavController,
+    viewModel: ChatViewModel = koinViewModel()
+) {
     val messages by viewModel.messages.collectAsState()
     var inputText by remember { mutableStateOf("") }
 
@@ -93,11 +98,11 @@ fun ChatbotScreen(navController: NavController, viewModel: ChatViewModel) {
                 )
             }
         }
-    ) {
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it)
+                .padding(paddingValues)
                 .padding(horizontal = 8.dp),
             reverseLayout = true,
             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)
@@ -151,7 +156,7 @@ fun MessageInput(onSendMessage: (String) -> Unit) {
             },
             modifier = Modifier.padding(start = 8.dp)
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Send")
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Send")
         }
     }
 }
