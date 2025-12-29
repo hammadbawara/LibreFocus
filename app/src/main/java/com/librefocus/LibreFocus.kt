@@ -4,6 +4,7 @@ import android.app.Application
 import com.librefocus.di.appDetailModule
 import com.librefocus.di.appSelectionModule
 import com.librefocus.di.categoryModule
+import com.librefocus.di.chatbotModule
 import com.librefocus.di.dataStoreModule
 import com.librefocus.di.databaseModule
 import com.librefocus.di.homeModule
@@ -38,7 +39,8 @@ class LibreFocus: Application() {
                 categoryModule,
                 appSelectionModule,
                 limitsModule,
-                workerModule
+                workerModule,
+                chatbotModule
             )
         }
     }
