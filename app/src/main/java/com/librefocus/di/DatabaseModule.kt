@@ -96,6 +96,8 @@ val databaseModule = module {
             appCategoryDao = get(),
             appDao = get(),
             hourlyAppUsageDao = get(),
+            dailyDeviceUsageDao = get(),
+            limitDao = get(),
             syncMetadataDao = get()
         )
     }

@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -34,7 +32,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -51,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -91,7 +87,8 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showThemeDialog by remember { mutableStateOf(false) }
-    var showRestoreConflictDialog by remember { mutableStateOf(false) }
+    var showRestoreWarningDialog by remember { mutableStateOf(false) }
+    var showRestoreConfirmDialog by remember { mutableStateOf(false) }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
     var showResetVerificationDialog by remember { mutableStateOf(false) }
     var resetVerificationText by remember { mutableStateOf("") }
@@ -109,7 +106,7 @@ fun SettingsScreen(
     ) { uri ->
         uri?.let {
             pendingRestoreUri = it
-            showRestoreConflictDialog = true
+            showRestoreWarningDialog = true
         }
     }
     
@@ -216,7 +213,7 @@ fun SettingsScreen(
                         )
                     },
                     title = { Text("Backup Data") },
-                    subtitle = { Text("Export usage history and categories") },
+                    subtitle = { Text("Export all database to a file") },
                     onClick = {
                         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                         backupLauncher.launch("librefocusdata$timestamp.zip")
@@ -231,7 +228,7 @@ fun SettingsScreen(
                         )
                     },
                     title = { Text("Restore Data") },
-                    subtitle = { Text("Import usage data from backup file") },
+                    subtitle = { Text("Replace all data from backup file") },
                     onClick = {
                         restoreLauncher.launch(arrayOf("application/zip"))
                     }
@@ -253,7 +250,7 @@ fun SettingsScreen(
                     },
                     subtitle = { 
                         Text(
-                            "Permanently delete usage data",
+                            "Permanently delete all database",
                             color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                         )
                     },
@@ -579,102 +576,103 @@ fun SettingsScreen(
         )
     }
     
-    // Restore conflict resolution dialog
-    if (showRestoreConflictDialog) {
-        var selectedOption by remember { mutableStateOf(true) } // true = override, false = keep existing
-        
+    // Restore warning dialog (Step 1)
+    if (showRestoreWarningDialog) {
         AlertDialog(
             onDismissRequest = { 
-                showRestoreConflictDialog = false
+                showRestoreWarningDialog = false
                 pendingRestoreUri = null
             },
-            title = { Text("Restore Options") },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Restore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = { Text("Restore Data?") },
             text = {
-                Column {
-                    Text(
-                        "If conflicts are detected, how should they be handled?",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(
-                                selected = selectedOption,
-                                onClick = { selectedOption = true },
-                                role = Role.RadioButton
-                            )
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedOption,
-                            onClick = { selectedOption = true }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                "Override existing data",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "Keep imported data for conflicts",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(
-                                selected = !selectedOption,
-                                onClick = { selectedOption = false },
-                                role = Role.RadioButton
-                            )
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = !selectedOption,
-                            onClick = { selectedOption = false }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                "Keep existing data",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "Preserve current data for conflicts",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
+                Text(
+                    "Warning: This will delete ALL existing data and replace it with the backup data.\\n\\n" +
+                    "Your current data will be permanently lost.\\n\\n" +
+                    "Do you want to continue?"
+                )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        pendingRestoreUri?.let { uri ->
-                            viewModel.importAndRestoreBackup(uri, selectedOption)
-                        }
-                        showRestoreConflictDialog = false
-                        pendingRestoreUri = null
+                        showRestoreWarningDialog = false
+                        showRestoreConfirmDialog = true
                     }
                 ) {
-                    Text("Restore")
+                    Text("Continue")
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = {
-                        showRestoreConflictDialog = false
+                        showRestoreWarningDialog = false
+                        pendingRestoreUri = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Restore final confirmation dialog (Step 2)
+    if (showRestoreConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showRestoreConfirmDialog = false
+                pendingRestoreUri = null
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Restore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { 
+                Text(
+                    "Final Confirmation",
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            text = {
+                Text(
+                    buildAnnotatedString {
+                        append("Are you sure you want to ")
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)) {
+                            append("replace all existing data")
+                        }
+                        append(" with the backup?\\n\\n")
+                        append("This action cannot be undone.")
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingRestoreUri?.let { uri ->
+                            viewModel.importAndRestoreBackup(uri)
+                        }
+                        showRestoreConfirmDialog = false
+                        pendingRestoreUri = null
+                    }
+                ) {
+                    Text(
+                        "Yes, Replace All Data",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showRestoreConfirmDialog = false
                         pendingRestoreUri = null
                     }
                 ) {
@@ -703,12 +701,13 @@ fun SettingsScreen(
             },
             text = {
                 Text(
-                    "This will permanently delete usage data including:\n\n" +
+                    "This will permanently delete all database including:\n\n" +
                     "• Hourly usage history\n" +
+                    "• Daily device usage\n" +
                     "• App list\n" +
                     "• App categories\n" +
+                    "• Limits and schedules\n" +
                     "• Sync metadata\n\n" +
-                    "Note: Settings and limits will NOT be deleted.\n\n" +
                     "This action cannot be undone."
                 )
             },

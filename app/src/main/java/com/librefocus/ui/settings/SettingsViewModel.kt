@@ -138,10 +138,10 @@ class SettingsViewModel(
     
     /**
      * Imports and restores a backup from the specified URI.
+     * Deletes all existing data and replaces with backup data.
      * @param uri URI of the backup file
-     * @param overrideConflicts If true, imported data overrides existing; if false, existing data is kept
      */
-    fun importAndRestoreBackup(uri: Uri, overrideConflicts: Boolean) {
+    fun importAndRestoreBackup(uri: Uri) {
         viewModelScope.launch {
             _backupState.value = BackupState.InProgress("Importing backup...")
             
@@ -155,7 +155,7 @@ class SettingsViewModel(
             
             _backupState.value = BackupState.InProgress("Restoring data...")
             val backupData = importResult.getOrThrow()
-            val restoreResult = backupRestoreRepository.restoreBackup(backupData, overrideConflicts)
+            val restoreResult = backupRestoreRepository.restoreBackup(backupData)
             
             if (restoreResult.isSuccess) {
                 _backupState.value = BackupState.Success("Backup restored successfully")

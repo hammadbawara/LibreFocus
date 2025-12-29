@@ -5,7 +5,9 @@ import android.net.Uri
 import com.librefocus.data.local.database.UsageDatabase
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
+import com.librefocus.data.local.database.dao.DailyDeviceUsageDao
 import com.librefocus.data.local.database.dao.HourlyAppUsageDao
+import com.librefocus.data.local.database.dao.LimitDao
 import com.librefocus.data.local.database.dao.SyncMetadataDao
 import com.librefocus.models.BackupData
 import com.librefocus.models.DatabaseBackup
@@ -26,15 +28,17 @@ class BackupRestoreRepository(
     private val appCategoryDao: AppCategoryDao,
     private val appDao: AppDao,
     private val hourlyAppUsageDao: HourlyAppUsageDao,
+    private val dailyDeviceUsageDao: DailyDeviceUsageDao,
+    private val limitDao: LimitDao,
     private val syncMetadataDao: SyncMetadataDao
 ) {
     private val json = Json {
-        prettyPrint = true
+        prettyPrint = false
         ignoreUnknownKeys = true
     }
 
     /**
-     * Creates a backup of essential usage data (categories, apps, hourly usage, sync metadata).
+     * Creates a backup of all database tables.
      */
     suspend fun createBackup(): Result<BackupData> = withContext(Dispatchers.IO) {
         try {
@@ -42,6 +46,11 @@ class BackupRestoreRepository(
                 appCategories = appCategoryDao.getAllCategories().first(),
                 apps = appDao.getAllApps().first(),
                 hourlyAppUsage = hourlyAppUsageDao.getAllUsage().first(),
+                dailyDeviceUsage = dailyDeviceUsageDao.getAllDailyUsage().first(),
+                limits = limitDao.getAllLimits().first(),
+                scheduleLimits = limitDao.getAllScheduleLimits().first(),
+                usageLimits = limitDao.getAllUsageLimits().first(),
+                launchCountLimits = limitDao.getAllLaunchCountLimits().first(),
                 syncMetadata = syncMetadataDao.getAllMetadata().first()
             )
 
@@ -103,88 +112,34 @@ class BackupRestoreRepository(
     }
 
     /**
-     * Restores backup data with conflict resolution strategy.
-     * @param data Backup data to restore
-     * @param overrideConflicts If true, imported data overrides existing; if false, existing data is kept
+     * Restores backup data by deleting all existing data and importing new data.
+     * This is a complete replacement operation.
      */
-    suspend fun restoreBackup(data: BackupData, overrideConflicts: Boolean): Result<Unit> = 
+    suspend fun restoreBackup(data: BackupData): Result<Unit> = 
         withContext(Dispatchers.IO) {
             try {
                 database.runInTransaction {
-                    // Categories: detect conflicts by categoryName
-                    val existingCategories = appCategoryDao.getAllCategoriesSync()
-                    val existingCategoryNames = existingCategories.map { it.categoryName }.toSet()
+                    // Delete all existing data (order matters due to foreign keys)
+                    hourlyAppUsageDao.deleteAllUsage()
+                    appDao.deleteAllApps()
+                    appCategoryDao.deleteAllCategories()
+                    dailyDeviceUsageDao.deleteAllDailyUsage()
+                    limitDao.deleteAllScheduleLimits()
+                    limitDao.deleteAllUsageLimits()
+                    limitDao.deleteAllLaunchCountLimits()
+                    limitDao.deleteAllLimits()
+                    syncMetadataDao.deleteAllMetadata()
                     
-                    val (conflictingCategories, newCategories) = data.database.appCategories
-                        .partition { it.categoryName in existingCategoryNames }
-                    
-                    if (overrideConflicts) {
-                        // Delete existing conflicting categories (cascade deletes related data)
-                        conflictingCategories.forEach { imported ->
-                            existingCategories.find { it.categoryName == imported.categoryName }?.let {
-                                appCategoryDao.deleteCategorySync(it.id)
-                            }
-                        }
-                        // Insert all imported categories (including previously conflicting ones)
-                        appCategoryDao.insertCategoriesSync(data.database.appCategories)
-                    } else {
-                        // Only insert non-conflicting categories
-                        appCategoryDao.insertCategoriesSync(newCategories)
-                    }
-
-                    // Apps: detect conflicts by packageName
-                    val existingApps = appDao.getAllAppsSync()
-                    val existingPackageNames = existingApps.map { it.packageName }.toSet()
-                    
-                    val (conflictingApps, newApps) = data.database.apps
-                        .partition { it.packageName in existingPackageNames }
-                    
-                    if (overrideConflicts) {
-                        conflictingApps.forEach { imported ->
-                            existingApps.find { it.packageName == imported.packageName }?.let {
-                                appDao.deleteAppSync(it.id)
-                            }
-                        }
-                        appDao.insertAppsSync(data.database.apps)
-                    } else {
-                        appDao.insertAppsSync(newApps)
-                    }
-
-                    // Hourly Usage: detect conflicts by (appId, hourStartUtc)
-                    val existingUsage = hourlyAppUsageDao.getAllUsageSync()
-                    val existingUsageKeys = existingUsage.map { "${it.appId}_${it.hourStartUtc}" }.toSet()
-                    
-                    val (conflictingUsage, newUsage) = data.database.hourlyAppUsage
-                        .partition { "${it.appId}_${it.hourStartUtc}" in existingUsageKeys }
-                    
-                    if (overrideConflicts) {
-                        conflictingUsage.forEach { imported ->
-                            existingUsage.find { 
-                                it.appId == imported.appId && it.hourStartUtc == imported.hourStartUtc 
-                            }?.let {
-                                hourlyAppUsageDao.deleteUsageSync(it.id)
-                            }
-                        }
-                        hourlyAppUsageDao.insertUsageSync(data.database.hourlyAppUsage)
-                    } else {
-                        hourlyAppUsageDao.insertUsageSync(newUsage)
-                    }
-
-                    // Sync Metadata: detect conflicts by key
-                    val existingMetadata = syncMetadataDao.getAllMetadataSync()
-                    val existingKeys = existingMetadata.map { it.key }.toSet()
-                    
-                    val (conflictingMetadata, newMetadata) = data.database.syncMetadata
-                        .partition { it.key in existingKeys }
-                    
-                    if (overrideConflicts) {
-                        conflictingMetadata.forEach { imported ->
-                            syncMetadataDao.upsertSync(imported)
-                        }
-                        syncMetadataDao.insertMetadataSync(newMetadata)
-                    } else {
-                        syncMetadataDao.insertMetadataSync(newMetadata)
-                    }
+                    // Import all data from backup
+                    appCategoryDao.insertCategoriesSync(data.database.appCategories)
+                    appDao.insertAppsSync(data.database.apps)
+                    hourlyAppUsageDao.insertUsageSync(data.database.hourlyAppUsage)
+                    dailyDeviceUsageDao.insertDailyUsageSync(data.database.dailyDeviceUsage)
+                    limitDao.insertLimitsSync(data.database.limits)
+                    limitDao.insertScheduleLimitsSync(data.database.scheduleLimits)
+                    limitDao.insertUsageLimitsSync(data.database.usageLimits)
+                    limitDao.insertLaunchCountLimitsSync(data.database.launchCountLimits)
+                    syncMetadataDao.insertMetadataSync(data.database.syncMetadata)
                 }
 
                 Result.success(Unit)
@@ -194,15 +149,20 @@ class BackupRestoreRepository(
         }
 
     /**
-     * Resets essential usage data (clears categories, apps, hourly usage, and sync metadata).
+     * Resets all database data.
      */
     suspend fun resetAllData(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             database.runInTransaction {
-                // Clear essential tables (order matters due to foreign keys)
+                // Clear all tables (order matters due to foreign keys)
                 hourlyAppUsageDao.deleteAllUsage()
                 appDao.deleteAllApps()
                 appCategoryDao.deleteAllCategories()
+                dailyDeviceUsageDao.deleteAllDailyUsage()
+                limitDao.deleteAllScheduleLimits()
+                limitDao.deleteAllUsageLimits()
+                limitDao.deleteAllLaunchCountLimits()
+                limitDao.deleteAllLimits()
                 syncMetadataDao.deleteAllMetadata()
             }
 
