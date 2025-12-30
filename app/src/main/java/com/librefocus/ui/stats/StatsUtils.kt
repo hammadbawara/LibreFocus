@@ -44,9 +44,10 @@ fun formatDuration(millis: Long): String {
 
 /**
  * Formats the bottom label for chart based on the usage point and formatted preferences.
- * @param point UsageValuePoint with local time timestamp
+ * Converts UTC timestamp to user's timezone for display.
+ * @param point UsageValuePoint with UTC timestamp
  * @param range The stats range type
- * @param formatted Formatted date/time preferences
+ * @param formatted Formatted date/time preferences (handles timezone conversion)
  */
 fun formatBottomLabel(point: UsageValuePoint, range: StatsRange, formatted: FormattedDateTimePreferences?): String {
     if (formatted == null) {
@@ -62,7 +63,8 @@ fun formatBottomLabel(point: UsageValuePoint, range: StatsRange, formatted: Form
 
 /**
  * Legacy bottom label formatter for backward compatibility.
- * @param point UsageValuePoint with local time timestamp
+ * Converts UTC timestamp to system timezone for display.
+ * @param point UsageValuePoint with UTC timestamp
  * @param range The stats range type
  * @param timeFormat User's time format preference ("12H" or "24H")
  */

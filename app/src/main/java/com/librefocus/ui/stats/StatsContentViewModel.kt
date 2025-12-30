@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
@@ -230,7 +229,7 @@ open class StatsContentViewModel(
     private fun refreshData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            //runCatching {
                 val period = _periodState.value  // Now guaranteed non-null
                 val metric = _metric.value
 
@@ -263,9 +262,9 @@ open class StatsContentViewModel(
                     }
                 }
 
-                // Convert UTC data points to local time for UI display
-                val usagePointsLocal = convertUsagePointsToLocal(rawUsagePoints)
-                val filledUsagePoints = fillMissingUsagePoints(usagePointsLocal, period, _range.value)
+                // Keep data in UTC - no conversion needed
+                // Timezone conversion happens only at UI layer for display
+                val filledUsagePoints = fillMissingUsagePoints(rawUsagePoints, period, _range.value)
 
 
 
@@ -311,11 +310,11 @@ open class StatsContentViewModel(
                     averageDisplayValue = averageDisplayValue,
                     averageDisplayLabel = averageDisplayLabel
                 )
-            }.onSuccess { state ->
-                _uiState.value = state
-            }.onFailure { throwable ->
-                _uiState.update { it.copy(isLoading = false, errorMessage = throwable.message) }
-            }
+//            }.onSuccess { state ->
+//                _uiState.value = state
+//            }.onFailure { throwable ->
+//                _uiState.update { it.copy(isLoading = false, errorMessage = throwable.message) }
+//            }
         }
     }
 
@@ -400,32 +399,25 @@ open class StatsContentViewModel(
         period: StatsPeriodState,
         range: StatsRange
     ): List<UsageValuePoint> {
-        val formatted = formattedPreferences.value ?: return points
-
         val bucketSizeMillis = when (range) {
             StatsRange.Day -> TimeUnit.HOURS.toMillis(1)
             StatsRange.Week, StatsRange.Month, StatsRange.Custom -> TimeUnit.DAYS.toMillis(1)
         }
 
-        // Convert period boundaries to local time for bucket generation
-        val startLocal = Instant.ofEpochMilli(period.startUtc).atZone(formatted.zoneId)
-        val endLocal = Instant.ofEpochMilli(period.endUtc).atZone(formatted.zoneId)
-        val startLocalMillis = startLocal.toInstant().toEpochMilli()
-        val endLocalMillis = endLocal.toInstant().toEpochMilli()
-
+        // Work with UTC timestamps throughout - no conversion
         val filteredPoints = points.filter { point ->
-            point.bucketStartUtc >= startLocalMillis && point.bucketStartUtc < endLocalMillis
+            point.bucketStartUtc >= period.startUtc && point.bucketStartUtc < period.endUtc
         }
 
         if (filteredPoints.isEmpty()) {
-            return generateEmptySeriesLocal(startLocalMillis, endLocalMillis, range)
+            return generateEmptySeries(period.startUtc, period.endUtc, bucketSizeMillis)
         }
 
         val pointMap = filteredPoints.associateBy { it.bucketStartUtc }
         val filledPoints = mutableListOf<UsageValuePoint>()
-        var cursor = startLocalMillis
+        var cursor = period.startUtc
 
-        while (cursor < endLocalMillis) {
+        while (cursor < period.endUtc) {
             filledPoints += pointMap[cursor] ?: UsageValuePoint(
                 bucketStartUtc = cursor,
                 totalUsageMillis = 0L,
@@ -438,38 +430,18 @@ open class StatsContentViewModel(
 
 
     /**
-     * Converts UTC-based usage points to local timezone.
-     * The bucketStartUtc in each point is converted to the equivalent local time bucket.
+     * Generates an empty series of usage points for the given UTC time range.
+     * All timestamps remain in UTC - conversion to local time happens only at UI layer.
      */
-    private fun convertUsagePointsToLocal(utcPoints: List<UsageValuePoint>): List<UsageValuePoint> {
-        val formatted = formattedPreferences.value ?: return utcPoints
-
-        return utcPoints.map { point ->
-            // Convert UTC bucket start to local time
-            val utcInstant = Instant.ofEpochMilli(point.bucketStartUtc)
-            val localDateTime = java.time.LocalDateTime.ofInstant(utcInstant, java.time.ZoneId.of("UTC"))
-            val localInstant = localDateTime.atZone(formatted.zoneId).toInstant()
-
-            point.copy(bucketStartUtc = localInstant.toEpochMilli())
-        }
-    }
-
-    /**
-     * Generates an empty series of usage points for the given local time range.
-     */
-    private fun generateEmptySeriesLocal(
-        startLocalMillis: Long,
-        endLocalMillis: Long,
-        range: StatsRange
+    private fun generateEmptySeries(
+        startUtcMillis: Long,
+        endUtcMillis: Long,
+        bucketSizeMillis: Long
     ): List<UsageValuePoint> {
-        val bucketSizeMillis = when (range) {
-            StatsRange.Day -> TimeUnit.HOURS.toMillis(1)
-            StatsRange.Week, StatsRange.Month, StatsRange.Custom -> TimeUnit.DAYS.toMillis(1)
-        }
         val result = mutableListOf<UsageValuePoint>()
-        var cursor = startLocalMillis
+        var cursor = startUtcMillis
 
-        while (cursor < endLocalMillis) {
+        while (cursor < endUtcMillis) {
             result += UsageValuePoint(
                 bucketStartUtc = cursor,
                 totalUsageMillis = 0L,

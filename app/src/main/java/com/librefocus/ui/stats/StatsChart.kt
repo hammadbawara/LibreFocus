@@ -215,15 +215,17 @@ private fun UsageValuePoint.markerTimeLabel(
     formatted: com.librefocus.utils.FormattedDateTimePreferences?
 ): String {
     if (formatted == null) {
-        // Fallback to system default
+        // Fallback: Convert UTC to system default timezone
         val zone = java.time.ZoneId.systemDefault()
-        val start = java.time.Instant.ofEpochMilli(bucketStartUtc).atZone(zone)
+        val utcInstant = java.time.Instant.ofEpochMilli(bucketStartUtc)
+        val zonedDateTime = utcInstant.atZone(zone)
         return when (range) {
-            StatsRange.Day -> markerHourFormatterFallback.format(start)
-            StatsRange.Week, StatsRange.Month, StatsRange.Custom -> markerDayFormatterFallback.format(start)
+            StatsRange.Day -> markerHourFormatterFallback.format(zonedDateTime)
+            StatsRange.Week, StatsRange.Month, StatsRange.Custom -> markerDayFormatterFallback.format(zonedDateTime)
         }
     }
     
+    // Convert UTC timestamp to user's timezone for display
     return when (range) {
         StatsRange.Day -> formatted.formatTime(bucketStartUtc)
         StatsRange.Week, StatsRange.Month, StatsRange.Custom -> formatted.formatDate(bucketStartUtc)
