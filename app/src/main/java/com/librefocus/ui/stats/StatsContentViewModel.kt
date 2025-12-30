@@ -319,12 +319,6 @@ open class StatsContentViewModel(
         }
     }
 
-
-
-    /**
-     * Creates an initial period state using system defaults.
-     * This ensures the period state is never null, even before preferences load.
-     */
     private fun initialPeriodStateDefault(): StatsPeriodState {
         val now = System.currentTimeMillis()
         val systemZone = java.time.ZoneId.systemDefault()
@@ -339,15 +333,10 @@ open class StatsContentViewModel(
         return StatsPeriodState(
             startUtc = dayStartUtc,
             endUtc = dayEndUtc,
-            label = "Today"  // Default label, will be updated when preferences load
+            label = "Today"
         )
     }
 
-    /**
-     * Creates a period state for a specific day in the user's local timezone.
-     * @param localDateTime ZonedDateTime in the user's timezone
-     * @param formatted Formatted date/time preferences
-     */
     private fun periodForDay(localDateTime: ZonedDateTime, formatted: FormattedDateTimePreferences): StatsPeriodState {
         val dayStartLocal = localDateTime.toLocalDate().atStartOfDay(formatted.zoneId)
         val dayStartUtc = dayStartLocal.toInstant().toEpochMilli()
@@ -360,11 +349,6 @@ open class StatsContentViewModel(
         )
     }
 
-    /**
-     * Creates a period state for a specific date in the user's local timezone.
-     * @param localDate LocalDate in the user's timezone
-     * @param formatted Formatted date/time preferences
-     */
     private fun periodForDate(localDate: LocalDate, formatted: FormattedDateTimePreferences): StatsPeriodState {
         val dayStartLocal = localDate.atStartOfDay(formatted.zoneId)
         val dayStartUtc = dayStartLocal.toInstant().toEpochMilli()
@@ -377,11 +361,6 @@ open class StatsContentViewModel(
         )
     }
 
-    /**
-     * Creates a period state for a week ending on the given day in the user's local timezone.
-     * @param localDateTime ZonedDateTime in the user's timezone
-     * @param formatted Formatted date/time preferences
-     */
     private fun periodForWeek(localDateTime: ZonedDateTime, formatted: FormattedDateTimePreferences): StatsPeriodState {
         val dayStartLocal = localDateTime.toLocalDate().atStartOfDay(formatted.zoneId)
         val weekStartLocal = dayStartLocal.minusDays(6)
@@ -395,11 +374,6 @@ open class StatsContentViewModel(
         )
     }
 
-    /**
-     * Creates a period state for a month in the user's local timezone.
-     * @param localDateTime ZonedDateTime in the user's timezone
-     * @param formatted Formatted date/time preferences
-     */
     private fun periodForMonth(localDateTime: ZonedDateTime, formatted: FormattedDateTimePreferences): StatsPeriodState {
         val monthStartLocal = localDateTime.withDayOfMonth(1).toLocalDate().atStartOfDay(formatted.zoneId)
         val nextMonthStartLocal = monthStartLocal.plusMonths(1)
@@ -413,32 +387,14 @@ open class StatsContentViewModel(
         )
     }
 
-    /**
-     * Formats a date range label for display.
-     * @param startUtc UTC timestamp of range start
-     * @param durationMillis Duration of the range in milliseconds
-     * @param formatted Formatted date/time preferences
-     */
     private fun formatRangeLabel(startUtc: Long, durationMillis: Long, formatted: FormattedDateTimePreferences): String {
         return formatted.formatDateRange(startUtc, startUtc + durationMillis)
     }
 
-    /**
-     * Formats a custom date range label for display.
-     * @param startUtc UTC timestamp of range start
-     * @param endUtc UTC timestamp of range end (exclusive)
-     * @param formatted Formatted date/time preferences
-     */
     private fun formatCustomLabel(startUtc: Long, endUtc: Long, formatted: FormattedDateTimePreferences): String {
         return formatted.formatDateRange(startUtc, endUtc)
     }
 
-    /**
-     * Fills missing time buckets with empty data points.
-     * @param points List of usage points in local time
-     * @param period The period state containing UTC start and end times
-     * @param range The stats range type
-     */
     private fun fillMissingUsagePoints(
         points: List<UsageValuePoint>,
         period: StatsPeriodState,
