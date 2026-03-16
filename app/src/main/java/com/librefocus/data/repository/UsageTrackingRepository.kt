@@ -261,4 +261,14 @@ class UsageTrackingRepository(
                 )
             }
     }
+
+    /**
+     * Returns raw hourly usage entities in a range for advanced analytics.
+     */
+    suspend fun getHourlyUsageEntriesInTimeRange(
+        startUtc: Long,
+        endUtc: Long
+    ): List<HourlyAppUsageEntity> = withContext(Dispatchers.IO) {
+        hourlyAppUsageDao.getUsageInTimeRangeOnce(startUtc, endUtc)
+    }
 }

@@ -20,7 +20,8 @@ data class StatsUiState(
     val totalDisplayLabel: String = "Total",
     val averageDisplayValue: String = "0m",
     val averageDisplayLabel: String = "Avg per hour",
-    val phaseOneInsights: PhaseOneInsights? = null
+    val phaseOneInsights: PhaseOneInsights? = null,
+    val phaseTwoInsights: PhaseTwoInsights? = null
 )
 
 data class PhaseOneInsights(
@@ -59,6 +60,38 @@ data class ConcentrationInsight(
     val top1Percentage: Int,
     val top3Percentage: Int,
     val top5Percentage: Int
+)
+
+data class PhaseTwoInsights(
+    val heatmap: UsageHeatmapInsight,
+    val streaks: StreaksConsistencyInsight,
+    val appSprawl: AppSprawlInsight
+)
+
+data class UsageHeatmapInsight(
+    val cells: List<HeatmapCell>,
+    val peakWeekday: Int?,
+    val peakHour: Int?
+)
+
+data class HeatmapCell(
+    val weekday: Int, // 1 = Monday, 7 = Sunday
+    val hour: Int,
+    val usageMinutes: Double,
+    val intensity: Float
+)
+
+data class StreaksConsistencyInsight(
+    val controlledDaysStreak: Int,
+    val consistencyScore: Int,
+    val volatilityMinutes: Int,
+    val baselineMinutes: Int
+)
+
+data class AppSprawlInsight(
+    val avgDistinctAppsPerDay: Double,
+    val previousAvgDistinctAppsPerDay: Double?,
+    val deltaPercent: Int?
 )
 
 /**

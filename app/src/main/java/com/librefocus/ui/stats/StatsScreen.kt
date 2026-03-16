@@ -139,6 +139,12 @@ fun StatsScreen(
                         )
                     }
                 }
+
+                item {
+                    uiState.phaseTwoInsights?.let { insights ->
+                        PhaseTwoInsightsSection(insights = insights)
+                    }
+                }
                 
                 item {
                     Spacer(modifier = Modifier.height(8.dp))

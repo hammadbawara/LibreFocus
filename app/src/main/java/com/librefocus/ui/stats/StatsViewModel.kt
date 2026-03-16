@@ -18,6 +18,9 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 class StatsViewModel(
@@ -256,6 +259,11 @@ class StatsViewModel(
                     totalUsageMillis = totalUsageMillis,
                     totalUnlocks = totalUnlocks
                 )
+
+                val phaseTwoInsights = buildPhaseTwoInsights(
+                    period = period,
+                    usageByDay = usagePointsByDay
+                )
                 
                 val activeUsageBuckets = filledUsagePoints.count { it.totalUsageMillis > 0 }
                 val averageSessionMillis = if (activeUsageBuckets > 0) {
@@ -298,7 +306,8 @@ class StatsViewModel(
                     totalDisplayLabel = totalDisplayLabel,
                     averageDisplayValue = averageDisplayValue,
                     averageDisplayLabel = averageDisplayLabel,
-                    phaseOneInsights = insights
+                    phaseOneInsights = insights,
+                    phaseTwoInsights = phaseTwoInsights
                 )
             }.onSuccess { state ->
                 _uiState.value = state
@@ -705,5 +714,177 @@ class StatsViewModel(
         val sorted = values.sorted()
         val index = ((sorted.size - 1) * percentile).toInt().coerceIn(0, sorted.lastIndex)
         return sorted[index]
+    }
+
+    private suspend fun buildPhaseTwoInsights(
+        period: StatsPeriodState,
+        usageByDay: List<UsageValuePoint>
+    ): PhaseTwoInsights {
+        val zoneId = formattedPreferences.value?.zoneId ?: ZoneId.systemDefault()
+        val rangeDurationMillis = period.endUtc - period.startUtc
+        val previousStartUtc = period.startUtc - rangeDurationMillis
+
+        val rawEntries = usageRepository.getHourlyUsageEntriesInTimeRange(
+            startUtc = period.startUtc,
+            endUtc = period.endUtc
+        )
+
+        val previousRawEntries = usageRepository.getHourlyUsageEntriesInTimeRange(
+            startUtc = previousStartUtc,
+            endUtc = period.startUtc
+        )
+
+        val heatmapBuckets = mutableMapOf<Pair<Int, Int>, Long>()
+        rawEntries.forEach { entry ->
+            val local = Instant.ofEpochMilli(entry.hourStartUtc).atZone(zoneId)
+            val weekday = local.dayOfWeek.value // Monday=1
+            val hour = local.hour
+            val key = weekday to hour
+            heatmapBuckets[key] = (heatmapBuckets[key] ?: 0L) + entry.usageDurationMillis
+        }
+
+        val maxUsageMillis = heatmapBuckets.values.maxOrNull() ?: 0L
+        val heatmapCells = buildList {
+            for (weekday in 1..7) {
+                for (hour in 0..23) {
+                    val usageMillis = heatmapBuckets[weekday to hour] ?: 0L
+                    val intensity = if (maxUsageMillis > 0L) {
+                        (usageMillis.toFloat() / maxUsageMillis.toFloat()).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                    add(
+                        HeatmapCell(
+                            weekday = weekday,
+                            hour = hour,
+                            usageMinutes = usageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble(),
+                            intensity = intensity
+                        )
+                    )
+                }
+            }
+        }
+
+        val peakCell = heatmapBuckets.maxByOrNull { it.value }?.key
+        val heatmap = UsageHeatmapInsight(
+            cells = heatmapCells,
+            peakWeekday = peakCell?.first,
+            peakHour = peakCell?.second
+        )
+
+        val currentDailyMap = usageByDay.associateBy { it.bucketStartUtc }
+        val baselineStartUtc = period.endUtc - TimeUnit.DAYS.toMillis(30)
+        val baselineDaily = usageRepository.getUsageTotalsGroupedByDay(
+            startUtc = baselineStartUtc,
+            endUtc = period.endUtc
+        )
+
+        val baselineMinutes = if (baselineDaily.isNotEmpty()) {
+            (baselineDaily.map { it.totalUsageMillis }.average() / TimeUnit.MINUTES.toMillis(1).toDouble()).roundToInt()
+        } else {
+            0
+        }
+
+        val sortedCurrentDaily = currentDailyMap.values.sortedBy { it.bucketStartUtc }
+        val currentDailyMinutes = sortedCurrentDaily.map {
+            it.totalUsageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()
+        }
+
+        val mean = currentDailyMinutes.average().takeIf { !it.isNaN() } ?: 0.0
+        val stdDev = if (currentDailyMinutes.size > 1) {
+            val variance = currentDailyMinutes.sumOf { value ->
+                val diff = value - mean
+                diff * diff
+            } / currentDailyMinutes.size.toDouble()
+            kotlin.math.sqrt(variance)
+        } else {
+            0.0
+        }
+
+        val cv = if (mean > 0.0) stdDev / mean else 0.0
+        val consistencyScore = ((1.0 - cv.coerceIn(0.0, 1.0)) * 100.0).roundToInt()
+
+        val baselineMedianMinutes = run {
+            val values = baselineDaily.map {
+                it.totalUsageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()
+            }
+            if (values.isEmpty()) 0.0 else percentile(values, 0.5)
+        }
+
+        val controlledThreshold = max(1, baselineMedianMinutes.roundToInt())
+        val todayLocal = LocalDate.now(zoneId)
+        val dayBuckets = buildList {
+            var cursor = period.startUtc
+            while (cursor < period.endUtc) {
+                add(cursor)
+                cursor += TimeUnit.DAYS.toMillis(1)
+            }
+        }
+
+        var streak = 0
+        for (dayUtc in dayBuckets.asReversed()) {
+            val localDay = Instant.ofEpochMilli(dayUtc).atZone(zoneId).toLocalDate()
+            if (localDay.isAfter(todayLocal)) continue
+            val usageMinutes = ((currentDailyMap[dayUtc]?.totalUsageMillis ?: 0L)
+                .toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble())
+            if (usageMinutes <= controlledThreshold.toDouble()) {
+                streak += 1
+            } else {
+                break
+            }
+        }
+
+        val streaks = StreaksConsistencyInsight(
+            controlledDaysStreak = streak,
+            consistencyScore = consistencyScore,
+            volatilityMinutes = stdDev.roundToInt(),
+            baselineMinutes = baselineMinutes
+        )
+
+        fun distinctByDay(entries: List<com.librefocus.data.local.database.entity.HourlyAppUsageEntity>): Map<Long, Int> {
+            val byDay = mutableMapOf<Long, MutableSet<Int>>()
+            entries.forEach { entry ->
+                val dayStartLocal = Instant.ofEpochMilli(entry.hourStartUtc)
+                    .atZone(zoneId)
+                    .toLocalDate()
+                    .atStartOfDay(zoneId)
+                    .toInstant()
+                    .toEpochMilli()
+                val set = byDay.getOrPut(dayStartLocal) { mutableSetOf() }
+                if (entry.usageDurationMillis > 0L) {
+                    set += entry.appId
+                }
+            }
+            return byDay.mapValues { it.value.size }
+        }
+
+        val currentDistinctByDay = distinctByDay(rawEntries)
+        val previousDistinctByDay = distinctByDay(previousRawEntries)
+
+        val currentDaysCount = max(1, dayBuckets.size)
+        val previousDaysCount = max(1, dayBuckets.size)
+        val currentAvgDistinct = currentDistinctByDay.values.sum().toDouble() / currentDaysCount.toDouble()
+        val previousAvgDistinct = if (previousDistinctByDay.isNotEmpty()) {
+            previousDistinctByDay.values.sum().toDouble() / previousDaysCount.toDouble()
+        } else {
+            null
+        }
+        val deltaPercent = if (previousAvgDistinct != null && previousAvgDistinct > 0.0) {
+            (((currentAvgDistinct - previousAvgDistinct) * 100.0) / previousAvgDistinct).roundToInt()
+        } else {
+            null
+        }
+
+        val appSprawl = AppSprawlInsight(
+            avgDistinctAppsPerDay = currentAvgDistinct,
+            previousAvgDistinctAppsPerDay = previousAvgDistinct,
+            deltaPercent = deltaPercent
+        )
+
+        return PhaseTwoInsights(
+            heatmap = heatmap,
+            streaks = streaks,
+            appSprawl = appSprawl
+        )
     }
 }

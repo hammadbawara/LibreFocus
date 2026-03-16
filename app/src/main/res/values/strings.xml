@@ -31,4 +31,17 @@
     <string name="stats_concentration_title">Top-app concentration</string>
     <string name="stats_concentration_value">Top 3 apps: %1$d%% • Top 1: %2$d%% • Top 5: %3$d%%</string>
     <string name="stats_most_used_day">Most used day: %1$s</string>
+
+    <!-- Phase 2 Patterns -->
+    <string name="stats_phase_two_header">Patterns</string>
+    <string name="stats_phase_two_heatmap_title">Usage heatmap</string>
+    <string name="stats_phase_two_heatmap_subtitle">Peak slot: %1$s</string>
+    <string name="stats_phase_two_no_peak">Not enough data yet</string>
+    <string name="stats_phase_two_streaks_title">Streaks and consistency</string>
+    <string name="stats_phase_two_streaks_value">Controlled streak: %1$d days • Consistency: %2$d/100 • Volatility: %3$d min • Baseline: %4$d min/day</string>
+    <string name="stats_phase_two_sprawl_title">App sprawl</string>
+    <string name="stats_phase_two_sprawl_value">%.1f apps/day • %2$s%3$d%% vs last period</string>
+    <string name="stats_phase_two_sprawl_value_no_previous">%.1f apps/day • Not enough previous history</string>
+    <string name="stats_phase_two_less">Less</string>
+    <string name="stats_phase_two_more">More</string>
 </resources>

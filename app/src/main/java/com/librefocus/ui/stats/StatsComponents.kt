@@ -3,30 +3,33 @@ package com.librefocus.ui.stats
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,10 +39,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,6 +54,9 @@ import com.librefocus.models.AppUsageData
 import com.librefocus.utils.FormattedDateTimePreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
@@ -174,12 +182,20 @@ fun SummaryCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors()
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Text(
                 text = title,
@@ -194,6 +210,188 @@ fun SummaryCard(
             )
         }
     }
+}
+
+@Composable
+fun PhaseTwoInsightsSection(
+    insights: PhaseTwoInsights
+) {
+    val peakLabel = if (insights.heatmap.peakWeekday != null && insights.heatmap.peakHour != null) {
+        val dayName = DayOfWeek.of(insights.heatmap.peakWeekday)
+            .getDisplayName(TextStyle.SHORT, Locale.getDefault())
+        val start = insights.heatmap.peakHour
+        val end = (start + 1) % 24
+        "$dayName ${String.format("%02d:00", start)}-${String.format("%02d:00", end)}"
+    } else {
+        stringResource(id = R.string.stats_phase_two_no_peak)
+    }
+
+    val sprawlValue = if (insights.appSprawl.deltaPercent == null) {
+        stringResource(
+            id = R.string.stats_phase_two_sprawl_value_no_previous,
+            insights.appSprawl.avgDistinctAppsPerDay
+        )
+    } else {
+        val deltaPrefix = if (insights.appSprawl.deltaPercent >= 0) "+" else ""
+        stringResource(
+            id = R.string.stats_phase_two_sprawl_value,
+            insights.appSprawl.avgDistinctAppsPerDay,
+            deltaPrefix,
+            insights.appSprawl.deltaPercent
+        )
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = stringResource(id = R.string.stats_phase_two_header),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        HeatmapInsightCard(
+            cells = insights.heatmap.cells,
+            subtitle = stringResource(id = R.string.stats_phase_two_heatmap_subtitle, peakLabel)
+        )
+
+        SummaryCard(
+            title = stringResource(id = R.string.stats_phase_two_streaks_title),
+            value = stringResource(
+                id = R.string.stats_phase_two_streaks_value,
+                insights.streaks.controlledDaysStreak,
+                insights.streaks.consistencyScore,
+                insights.streaks.volatilityMinutes,
+                insights.streaks.baselineMinutes
+            )
+        )
+
+        SummaryCard(
+            title = stringResource(id = R.string.stats_phase_two_sprawl_title),
+            value = sprawlValue
+        )
+    }
+}
+
+@Composable
+private fun HeatmapInsightCard(
+    cells: List<HeatmapCell>,
+    subtitle: String
+) {
+    val grouped = cells.groupBy { it.weekday }
+    val scrollState = rememberScrollState()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = stringResource(id = R.string.stats_phase_two_heatmap_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                for (weekday in 1..7) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = DayOfWeek.of(weekday).getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(32.dp)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            val rowCells = grouped[weekday].orEmpty().sortedBy { it.hour }
+                            rowCells.forEach { cell ->
+                                HeatmapCellBox(cell = cell)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(id = R.string.stats_phase_two_less),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                for (step in 0..4) {
+                    val intensity = step / 4f
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(heatmapColor(intensity))
+                            .border(
+                                width = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                                shape = RoundedCornerShape(3.dp)
+                            )
+                    )
+                }
+                Text(
+                    text = stringResource(id = R.string.stats_phase_two_more),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeatmapCellBox(cell: HeatmapCell) {
+    val alphaIntensity = cell.intensity.coerceIn(0f, 1f)
+    Box(
+        modifier = Modifier
+            .size(width = 10.dp, height = 14.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(heatmapColor(alphaIntensity))
+            .border(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(3.dp)
+            )
+    )
+}
+
+@Composable
+private fun heatmapColor(intensity: Float): Color {
+    val base = MaterialTheme.colorScheme.surfaceVariant
+    val accent = MaterialTheme.colorScheme.primary
+    return lerp(base, accent, intensity.coerceIn(0f, 1f))
 }
 
 @Composable
