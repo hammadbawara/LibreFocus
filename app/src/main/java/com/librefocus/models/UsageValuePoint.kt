@@ -6,5 +6,6 @@ package com.librefocus.models
 data class UsageValuePoint(
     val bucketStartUtc: Long,
     val totalUsageMillis: Long,
-    val totalLaunchCount: Int
+    val totalLaunchCount: Int,
+    val totalUnlockCount: Int = 0
 )

@@ -107,7 +107,8 @@ data class StatsPeriodState(
 
 enum class StatsMetric {
     ScreenTime,
-    Opens
+    Opens,
+    Unlocks
 }
 
 enum class StatsRange {

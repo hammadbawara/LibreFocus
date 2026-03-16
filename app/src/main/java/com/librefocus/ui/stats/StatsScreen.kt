@@ -131,6 +131,28 @@ fun StatsScreen(
                 }
 
                 item {
+                    StatsPeriodNavigator(
+                        label = period.label,
+                        onPrevious = viewModel::onNavigatePrevious,
+                        onNext = viewModel::onNavigateNext,
+                        isNextEnabled = true
+                    )
+                }
+
+                item {
+                    UsageChartCard(
+                        usagePoints = uiState.usagePoints,
+                        metric = metric,
+                        range = range,
+                        formatted = formattedPrefs
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                item {
                     uiState.phaseOneInsights?.let { insights ->
                         PhaseOneInsightsSection(
                             insights = insights,
@@ -145,37 +167,9 @@ fun StatsScreen(
                         PhaseTwoInsightsSection(insights = insights)
                     }
                 }
-                
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
 
                 item {
-                    UsageChartCard(
-                        usagePoints = uiState.usagePoints,
-                        metric = metric,
-                        range = range,
-                        formatted = formattedPrefs
-                    )
-                }
-
-                item {
-                    StatsPeriodNavigator(
-                        label = period.label,
-                        onPrevious = viewModel::onNavigatePrevious,
-                        onNext = viewModel::onNavigateNext,
-                        isNextEnabled = true
-                    )
-                }
-
-                item {
-                    // Display only unlocks in summary - screen time now shown above chart
-                    if (uiState.totalUnlocks > 0) {
-                        SummaryCard(
-                            title = stringResource(id = R.string.stats_total_unlocks_title),
-                            value = uiState.totalUnlocks.toString()
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
 
                 item {

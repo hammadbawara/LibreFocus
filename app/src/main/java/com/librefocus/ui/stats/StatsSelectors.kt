@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Leaderboard
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,15 +42,7 @@ fun StatsRangeSelector(
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     }
-                ),
-                leadingIcon = when (range) {
-                    StatsRange.Day -> {
-                        { androidx.compose.material3.Icon(imageVector = Icons.Outlined.Leaderboard, contentDescription = range.displayName()) }
-                    }
-                    StatsRange.Week -> null
-                    StatsRange.Month -> null
-                    StatsRange.Custom -> null
-                }
+                )
             )
         }
     }

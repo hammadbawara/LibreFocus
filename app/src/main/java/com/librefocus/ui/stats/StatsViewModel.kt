@@ -282,11 +282,13 @@ class StatsViewModel(
                 val totalDisplayValue = when (metric) {
                     StatsMetric.ScreenTime -> formatDuration(totalValue)
                     StatsMetric.Opens -> totalValue.toString()
+                    StatsMetric.Unlocks -> totalValue.toString()
                 }
                 
                 val averageDisplayValue = when (metric) {
                     StatsMetric.ScreenTime -> formatDuration(averageValue)
                     StatsMetric.Opens -> averageValue.toString()
+                    StatsMetric.Unlocks -> averageValue.toString()
                 }
                 
                 val totalDisplayLabel = formatTotalLabel(metric)
@@ -322,6 +324,7 @@ class StatsViewModel(
         return when (metric) {
             StatsMetric.ScreenTime -> appUsage
             StatsMetric.Opens -> appUsage.sortedByDescending { it.launchCount }
+            StatsMetric.Unlocks -> appUsage // No per-app unlock data, keep by screen time
         }
     }
 
