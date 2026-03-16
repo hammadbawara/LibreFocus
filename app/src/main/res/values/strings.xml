@@ -35,7 +35,7 @@
     <!-- Phase 2 Patterns -->
     <string name="stats_phase_two_header">Patterns</string>
     <string name="stats_phase_two_heatmap_title">Usage heatmap</string>
-    <string name="stats_phase_two_heatmap_subtitle">Peak slot: %1$s</string>
+    <string name="stats_phase_two_heatmap_subtitle">Last %1$d days • Peak slot: %2$s</string>
     <string name="stats_phase_two_no_peak">Not enough data yet</string>
     <string name="stats_phase_two_streaks_title">Streaks and consistency</string>
     <string name="stats_phase_two_streaks_value">Controlled streak: %1$d days • Consistency: %2$d/100 • Volatility: %3$d min • Baseline: %4$d min/day</string>

@@ -71,7 +71,8 @@ data class PhaseTwoInsights(
 data class UsageHeatmapInsight(
     val cells: List<HeatmapCell>,
     val peakWeekday: Int?,
-    val peakHour: Int?
+    val peakHour: Int?,
+    val windowDays: Int
 )
 
 data class HeatmapCell(

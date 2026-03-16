@@ -18,9 +18,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 class StatsViewModel(
@@ -261,8 +259,7 @@ class StatsViewModel(
                 )
 
                 val phaseTwoInsights = buildPhaseTwoInsights(
-                    period = period,
-                    usageByDay = usagePointsByDay
+                    period = period
                 )
                 
                 val activeUsageBuckets = filledUsagePoints.count { it.totalUsageMillis > 0 }
@@ -717,21 +714,15 @@ class StatsViewModel(
     }
 
     private suspend fun buildPhaseTwoInsights(
-        period: StatsPeriodState,
-        usageByDay: List<UsageValuePoint>
+        period: StatsPeriodState
     ): PhaseTwoInsights {
         val zoneId = formattedPreferences.value?.zoneId ?: ZoneId.systemDefault()
-        val rangeDurationMillis = period.endUtc - period.startUtc
-        val previousStartUtc = period.startUtc - rangeDurationMillis
+        val heatmapWindowDays = 28L
+        val heatmapStartUtc = period.endUtc - TimeUnit.DAYS.toMillis(heatmapWindowDays)
 
         val rawEntries = usageRepository.getHourlyUsageEntriesInTimeRange(
-            startUtc = period.startUtc,
+            startUtc = heatmapStartUtc,
             endUtc = period.endUtc
-        )
-
-        val previousRawEntries = usageRepository.getHourlyUsageEntriesInTimeRange(
-            startUtc = previousStartUtc,
-            endUtc = period.startUtc
         )
 
         val heatmapBuckets = mutableMapOf<Pair<Int, Int>, Long>()
@@ -769,33 +760,43 @@ class StatsViewModel(
         val heatmap = UsageHeatmapInsight(
             cells = heatmapCells,
             peakWeekday = peakCell?.first,
-            peakHour = peakCell?.second
+            peakHour = peakCell?.second,
+            windowDays = heatmapWindowDays.toInt()
         )
 
-        val currentDailyMap = usageByDay.associateBy { it.bucketStartUtc }
-        val baselineStartUtc = period.endUtc - TimeUnit.DAYS.toMillis(30)
-        val baselineDaily = usageRepository.getUsageTotalsGroupedByDay(
-            startUtc = baselineStartUtc,
+        val consistencyWindowDays = 30L
+        val consistencyWindowStartUtc = period.endUtc - TimeUnit.DAYS.toMillis(consistencyWindowDays)
+        val consistencyWindowDaily = usageRepository.getUsageTotalsGroupedByDay(
+            startUtc = consistencyWindowStartUtc,
             endUtc = period.endUtc
         )
+        val consistencyWindowMap = consistencyWindowDaily.associateBy { it.bucketStartUtc }
 
-        val baselineMinutes = if (baselineDaily.isNotEmpty()) {
-            (baselineDaily.map { it.totalUsageMillis }.average() / TimeUnit.MINUTES.toMillis(1).toDouble()).roundToInt()
+        val consistencyDayBuckets = buildList {
+            var cursor = consistencyWindowStartUtc
+            while (cursor < period.endUtc) {
+                add(cursor)
+                cursor += TimeUnit.DAYS.toMillis(1)
+            }
+        }
+
+        val consistencyDailyMinutes = consistencyDayBuckets.map { dayStartUtc ->
+            val usageMillis = consistencyWindowMap[dayStartUtc]?.totalUsageMillis ?: 0L
+            usageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()
+        }
+
+        val baselineMinutes = if (consistencyDailyMinutes.isNotEmpty()) {
+            consistencyDailyMinutes.average().roundToInt()
         } else {
             0
         }
 
-        val sortedCurrentDaily = currentDailyMap.values.sortedBy { it.bucketStartUtc }
-        val currentDailyMinutes = sortedCurrentDaily.map {
-            it.totalUsageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()
-        }
-
-        val mean = currentDailyMinutes.average().takeIf { !it.isNaN() } ?: 0.0
-        val stdDev = if (currentDailyMinutes.size > 1) {
-            val variance = currentDailyMinutes.sumOf { value ->
+        val mean = consistencyDailyMinutes.average().takeIf { !it.isNaN() } ?: 0.0
+        val stdDev = if (consistencyDailyMinutes.size > 1) {
+            val variance = consistencyDailyMinutes.sumOf { value ->
                 val diff = value - mean
                 diff * diff
-            } / currentDailyMinutes.size.toDouble()
+            } / consistencyDailyMinutes.size.toDouble()
             kotlin.math.sqrt(variance)
         } else {
             0.0
@@ -805,30 +806,35 @@ class StatsViewModel(
         val consistencyScore = ((1.0 - cv.coerceIn(0.0, 1.0)) * 100.0).roundToInt()
 
         val baselineMedianMinutes = run {
-            val values = baselineDaily.map {
-                it.totalUsageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()
-            }
+            val values = consistencyDailyMinutes
             if (values.isEmpty()) 0.0 else percentile(values, 0.5)
         }
 
         val controlledThreshold = max(1, baselineMedianMinutes.roundToInt())
         val todayLocal = LocalDate.now(zoneId)
-        val dayBuckets = buildList {
-            var cursor = period.startUtc
-            while (cursor < period.endUtc) {
-                add(cursor)
-                cursor += TimeUnit.DAYS.toMillis(1)
-            }
-        }
+
+        // Compute streak from a rolling lookback window so it does not depend on selected range length.
+        val streakLookbackStartUtc = period.endUtc - TimeUnit.DAYS.toMillis(90)
+        val streakDaily = usageRepository.getUsageTotalsGroupedByDay(
+            startUtc = streakLookbackStartUtc,
+            endUtc = period.endUtc
+        ).associateBy { it.bucketStartUtc }
 
         var streak = 0
-        for (dayUtc in dayBuckets.asReversed()) {
-            val localDay = Instant.ofEpochMilli(dayUtc).atZone(zoneId).toLocalDate()
-            if (localDay.isAfter(todayLocal)) continue
-            val usageMinutes = ((currentDailyMap[dayUtc]?.totalUsageMillis ?: 0L)
+        var cursorDayUtc = period.endUtc - TimeUnit.DAYS.toMillis(1)
+        while (cursorDayUtc >= streakLookbackStartUtc) {
+            val localDay = Instant.ofEpochMilli(cursorDayUtc).atZone(zoneId).toLocalDate()
+            if (localDay.isAfter(todayLocal)) {
+                cursorDayUtc -= TimeUnit.DAYS.toMillis(1)
+                continue
+            }
+
+            val usageMinutes = ((streakDaily[cursorDayUtc]?.totalUsageMillis ?: 0L)
                 .toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble())
+
             if (usageMinutes <= controlledThreshold.toDouble()) {
                 streak += 1
+                cursorDayUtc -= TimeUnit.DAYS.toMillis(1)
             } else {
                 break
             }
@@ -858,11 +864,24 @@ class StatsViewModel(
             return byDay.mapValues { it.value.size }
         }
 
-        val currentDistinctByDay = distinctByDay(rawEntries)
-        val previousDistinctByDay = distinctByDay(previousRawEntries)
+        val sprawlWindowDays = 14L
+        val currentSprawlStartUtc = period.endUtc - TimeUnit.DAYS.toMillis(sprawlWindowDays)
+        val previousSprawlStartUtc = currentSprawlStartUtc - TimeUnit.DAYS.toMillis(sprawlWindowDays)
 
-        val currentDaysCount = max(1, dayBuckets.size)
-        val previousDaysCount = max(1, dayBuckets.size)
+        val currentSprawlEntries = usageRepository.getHourlyUsageEntriesInTimeRange(
+            startUtc = currentSprawlStartUtc,
+            endUtc = period.endUtc
+        )
+        val previousSprawlEntries = usageRepository.getHourlyUsageEntriesInTimeRange(
+            startUtc = previousSprawlStartUtc,
+            endUtc = currentSprawlStartUtc
+        )
+
+        val currentDistinctByDay = distinctByDay(currentSprawlEntries)
+        val previousDistinctByDay = distinctByDay(previousSprawlEntries)
+
+        val currentDaysCount = max(1L, sprawlWindowDays).toInt()
+        val previousDaysCount = max(1L, sprawlWindowDays).toInt()
         val currentAvgDistinct = currentDistinctByDay.values.sum().toDouble() / currentDaysCount.toDouble()
         val previousAvgDistinct = if (previousDistinctByDay.isNotEmpty()) {
             previousDistinctByDay.values.sum().toDouble() / previousDaysCount.toDouble()

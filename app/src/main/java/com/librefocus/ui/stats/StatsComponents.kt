@@ -253,7 +253,11 @@ fun PhaseTwoInsightsSection(
 
         HeatmapInsightCard(
             cells = insights.heatmap.cells,
-            subtitle = stringResource(id = R.string.stats_phase_two_heatmap_subtitle, peakLabel)
+            subtitle = stringResource(
+                id = R.string.stats_phase_two_heatmap_subtitle,
+                insights.heatmap.windowDays,
+                peakLabel
+            )
         )
 
         SummaryCard(
