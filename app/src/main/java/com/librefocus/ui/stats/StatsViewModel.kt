@@ -10,14 +10,15 @@ import com.librefocus.utils.FormattedDateTimePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 class StatsViewModel(
     private val usageRepository: UsageTrackingRepository,
@@ -230,12 +231,31 @@ class StatsViewModel(
                     startUtc = period.startUtc,
                     endUtc = period.endUtc
                 )
+
+                val rawUsageByHour = usageRepository.getUsageTotalsGroupedByHour(
+                    startUtc = period.startUtc,
+                    endUtc = period.endUtc
+                )
+
+                val usagePointsByDay = usageRepository.getUsageTotalsGroupedByDay(
+                    startUtc = period.startUtc,
+                    endUtc = period.endUtc
+                )
                 
                 val totalUsageMillis = filledUsagePoints.sumOf { it.totalUsageMillis }
                 val totalUnlocks = usageRepository.getDailyUnlockSummary(
                     startUtc = period.startUtc,
                     endUtc = period.endUtc
                 ).sumOf { it.totalUnlocks }
+
+                val insights = buildPhaseOneInsights(
+                    period = period,
+                    usageByDay = usagePointsByDay,
+                    usageByHour = rawUsageByHour,
+                    appUsage = appUsage,
+                    totalUsageMillis = totalUsageMillis,
+                    totalUnlocks = totalUnlocks
+                )
                 
                 val activeUsageBuckets = filledUsagePoints.count { it.totalUsageMillis > 0 }
                 val averageSessionMillis = if (activeUsageBuckets > 0) {
@@ -277,7 +297,8 @@ class StatsViewModel(
                     totalDisplayValue = totalDisplayValue,
                     totalDisplayLabel = totalDisplayLabel,
                     averageDisplayValue = averageDisplayValue,
-                    averageDisplayLabel = averageDisplayLabel
+                    averageDisplayLabel = averageDisplayLabel,
+                    phaseOneInsights = insights
                 )
             }.onSuccess { state ->
                 _uiState.value = state
@@ -503,5 +524,186 @@ class StatsViewModel(
             cursor += bucketSizeMillis
         }
         return result
+    }
+
+    private suspend fun buildPhaseOneInsights(
+        period: StatsPeriodState,
+        usageByDay: List<UsageValuePoint>,
+        usageByHour: List<UsageValuePoint>,
+        appUsage: List<AppUsageData>,
+        totalUsageMillis: Long,
+        totalUnlocks: Int
+    ): PhaseOneInsights {
+        val rangeDurationMillis = period.endUtc - period.startUtc
+        val previousStartUtc = period.startUtc - rangeDurationMillis
+        val previousEndUtc = period.startUtc
+
+        val previousUsageByDay = usageRepository.getUsageTotalsGroupedByDay(
+            startUtc = previousStartUtc,
+            endUtc = previousEndUtc
+        )
+        val previousUnlocks = usageRepository.getDailyUnlockSummary(
+            startUtc = previousStartUtc,
+            endUtc = previousEndUtc
+        )
+
+        val currentScreenTime = usageByDay.sumOf { it.totalUsageMillis }
+        val currentOpens = usageByDay.sumOf { it.totalLaunchCount }.toLong()
+        val currentUnlocks = totalUnlocks.toLong()
+
+        val previousScreenTime = previousUsageByDay.sumOf { it.totalUsageMillis }
+        val previousOpens = previousUsageByDay.sumOf { it.totalLaunchCount }.toLong()
+        val previousUnlocksTotal = previousUnlocks.sumOf { it.totalUnlocks }.toLong()
+
+        val hasPreviousUsage = previousUsageByDay.isNotEmpty() || previousUnlocks.isNotEmpty()
+
+        val comparison = ComparisonInsight(
+            screenTime = buildMetricComparison(currentScreenTime, previousScreenTime, hasPreviousUsage),
+            opens = buildMetricComparison(currentOpens, previousOpens, hasPreviousUsage),
+            unlocks = buildMetricComparison(currentUnlocks, previousUnlocksTotal, hasPreviousUsage),
+            mostUsedDayUtc = usageByDay.maxByOrNull { it.totalUsageMillis }?.bucketStartUtc
+        )
+
+        val zoneId = formattedPreferences.value?.zoneId ?: ZoneId.systemDefault()
+        val usageByLocalHour = mutableMapOf<Int, Long>()
+        usageByHour.forEach { point ->
+            val hour = Instant.ofEpochMilli(point.bucketStartUtc).atZone(zoneId).hour
+            usageByLocalHour[hour] = (usageByLocalHour[hour] ?: 0L) + point.totalUsageMillis
+        }
+        val sortedHours = usageByLocalHour.entries
+            .sortedByDescending { it.value }
+            .take(3)
+            .map { it.key }
+        val lateNightMillis = usageByLocalHour
+            .filterKeys { it >= 22 }
+            .values
+            .sum()
+        val lateNightPercent = if (totalUsageMillis > 0L) {
+            ((lateNightMillis.toDouble() * 100.0) / totalUsageMillis.toDouble()).roundToInt()
+        } else {
+            0
+        }
+        val peakHours = PeakHoursInsight(
+            topHours = sortedHours,
+            lateNightPercentage = lateNightPercent
+        )
+
+        val totalLaunches = usageByDay.sumOf { it.totalLaunchCount }
+        val minutesPerUnlock = if (totalUnlocks > 0) {
+            (totalUsageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()) / totalUnlocks.toDouble()
+        } else {
+            null
+        }
+        val minutesPerLaunch = if (totalLaunches > 0) {
+            (totalUsageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()) / totalLaunches.toDouble()
+        } else {
+            null
+        }
+
+        val daysInRange = ((rangeDurationMillis / TimeUnit.DAYS.toMillis(1)).coerceAtLeast(1L)).toDouble()
+        val currentUnlocksPerDay = totalUnlocks.toDouble() / daysInRange
+        val checkingHeavy = calculateCheckingHeavyFlag(
+            lookbackEndUtc = period.endUtc,
+            currentUnlocksPerDay = currentUnlocksPerDay,
+            currentMinutesPerUnlock = minutesPerUnlock
+        )
+        val unlockEfficiency = UnlockEfficiencyInsight(
+            minutesPerUnlock = minutesPerUnlock,
+            minutesPerLaunch = minutesPerLaunch,
+            checkingHeavy = checkingHeavy
+        )
+
+        val totalAppTime = appUsage.sumOf { it.usageDurationMillis }
+        val sortedAppTimes = appUsage.map { it.usageDurationMillis }.sortedDescending()
+        fun sharePercent(topN: Int): Int {
+            if (totalAppTime <= 0L) return 0
+            val top = sortedAppTimes.take(topN).sum()
+            return ((top.toDouble() * 100.0) / totalAppTime.toDouble()).roundToInt()
+        }
+        val concentration = ConcentrationInsight(
+            top1Percentage = sharePercent(1),
+            top3Percentage = sharePercent(3),
+            top5Percentage = sharePercent(5)
+        )
+
+        return PhaseOneInsights(
+            comparison = comparison,
+            peakHours = peakHours,
+            unlockEfficiency = unlockEfficiency,
+            concentration = concentration
+        )
+    }
+
+    private fun buildMetricComparison(
+        currentValue: Long,
+        previousValue: Long,
+        hasPreviousData: Boolean
+    ): MetricComparison {
+        if (!hasPreviousData) {
+            return MetricComparison(
+                currentValue = currentValue,
+                previousValue = null,
+                deltaValue = null,
+                deltaPercent = null
+            )
+        }
+
+        val delta = currentValue - previousValue
+        val percent = if (previousValue > 0L) {
+            (delta.toDouble() * 100.0) / previousValue.toDouble()
+        } else {
+            null
+        }
+        return MetricComparison(
+            currentValue = currentValue,
+            previousValue = previousValue,
+            deltaValue = delta,
+            deltaPercent = percent
+        )
+    }
+
+    private suspend fun calculateCheckingHeavyFlag(
+        lookbackEndUtc: Long,
+        currentUnlocksPerDay: Double,
+        currentMinutesPerUnlock: Double?
+    ): Boolean {
+        if (currentMinutesPerUnlock == null) return false
+
+        val lookbackStartUtc = lookbackEndUtc - TimeUnit.DAYS.toMillis(14)
+        val lookbackUsageByDay = usageRepository.getUsageTotalsGroupedByDay(
+            startUtc = lookbackStartUtc,
+            endUtc = lookbackEndUtc
+        )
+        val lookbackUnlocks = usageRepository.getDailyUnlockSummary(
+            startUtc = lookbackStartUtc,
+            endUtc = lookbackEndUtc
+        )
+
+        if (lookbackUnlocks.size < 4) return false
+
+        val usageByDayKey = lookbackUsageByDay.associateBy { it.bucketStartUtc }
+        val unlockCounts = lookbackUnlocks.map { it.totalUnlocks.toDouble() }
+        val minutesPerUnlockByDay = lookbackUnlocks.mapNotNull { unlockDay ->
+            val usage = usageByDayKey[unlockDay.dateUtc]?.totalUsageMillis ?: 0L
+            if (unlockDay.totalUnlocks > 0) {
+                (usage.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()) / unlockDay.totalUnlocks.toDouble()
+            } else {
+                null
+            }
+        }
+
+        if (minutesPerUnlockByDay.size < 4) return false
+
+        val unlockP75 = percentile(unlockCounts, 0.75)
+        val minutesPerUnlockP25 = percentile(minutesPerUnlockByDay, 0.25)
+
+        return currentUnlocksPerDay >= unlockP75 && currentMinutesPerUnlock <= minutesPerUnlockP25
+    }
+
+    private fun percentile(values: List<Double>, percentile: Double): Double {
+        if (values.isEmpty()) return 0.0
+        val sorted = values.sorted()
+        val index = ((sorted.size - 1) * percentile).toInt().coerceIn(0, sorted.lastIndex)
+        return sorted[index]
     }
 }

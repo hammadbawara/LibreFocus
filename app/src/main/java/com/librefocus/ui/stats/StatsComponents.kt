@@ -46,8 +46,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.librefocus.R
 import com.librefocus.models.AppUsageData
+import com.librefocus.utils.FormattedDateTimePreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 @Composable
 fun StatsTotalAndAverage(
@@ -190,6 +193,146 @@ fun SummaryCard(
                 fontWeight = FontWeight.Bold
             )
         }
+    }
+}
+
+@Composable
+fun PhaseOneInsightsSection(
+    insights: PhaseOneInsights,
+    selectedMetric: StatsMetric,
+    formatted: FormattedDateTimePreferences?
+) {
+    val comparison = when (selectedMetric) {
+        StatsMetric.ScreenTime -> insights.comparison.screenTime
+        StatsMetric.Opens -> insights.comparison.opens
+    }
+
+    val comparisonMetricLabel = when (selectedMetric) {
+        StatsMetric.ScreenTime -> stringResource(id = R.string.stats_metric_screen_time)
+        StatsMetric.Opens -> stringResource(id = R.string.stats_metric_opens)
+    }
+
+    val currentValueText = when (selectedMetric) {
+        StatsMetric.ScreenTime -> formatDuration(comparison.currentValue)
+        StatsMetric.Opens -> comparison.currentValue.toString()
+    }
+
+    val deltaText = formatDeltaText(comparison, selectedMetric)
+
+    val mostUsedDayLabel = insights.comparison.mostUsedDayUtc?.let { dayUtc ->
+        formatted?.formatDate(dayUtc)
+    }
+
+    val topHoursText = if (insights.peakHours.topHours.isEmpty()) {
+        "-"
+    } else {
+        insights.peakHours.topHours
+            .sorted()
+            .joinToString(separator = ", ") { hour ->
+                val nextHour = (hour + 1) % 24
+                String.format("%02d:00-%02d:00", hour, nextHour)
+            }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = stringResource(id = R.string.stats_insights_header),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        SummaryCard(
+            title = stringResource(id = R.string.stats_change_card_title, comparisonMetricLabel),
+            value = if (deltaText == null) {
+                stringResource(id = R.string.stats_change_no_history, currentValueText)
+            } else {
+                stringResource(id = R.string.stats_change_with_delta, currentValueText, deltaText)
+            }
+        )
+
+        SummaryCard(
+            title = stringResource(id = R.string.stats_peak_card_title),
+            value = stringResource(
+                id = R.string.stats_peak_card_value,
+                topHoursText,
+                insights.peakHours.lateNightPercentage
+            )
+        )
+
+        SummaryCard(
+            title = stringResource(id = R.string.stats_unlock_efficiency_title),
+            value = formatUnlockEfficiencyValue(insights.unlockEfficiency)
+        )
+
+        SummaryCard(
+            title = stringResource(id = R.string.stats_concentration_title),
+            value = stringResource(
+                id = R.string.stats_concentration_value,
+                insights.concentration.top3Percentage,
+                insights.concentration.top1Percentage,
+                insights.concentration.top5Percentage
+            )
+        )
+
+        if (mostUsedDayLabel != null) {
+            Text(
+                text = stringResource(id = R.string.stats_most_used_day, mostUsedDayLabel),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun formatUnlockEfficiencyValue(insight: UnlockEfficiencyInsight): String {
+    val minutesPerUnlock = insight.minutesPerUnlock
+    val minutesPerLaunch = insight.minutesPerLaunch
+
+    if (minutesPerUnlock == null) {
+        return stringResource(id = R.string.stats_unlock_efficiency_no_data)
+    }
+
+    val unlockPart = stringResource(
+        id = R.string.stats_minutes_per_unlock,
+        minutesPerUnlock
+    )
+    val launchPart = if (minutesPerLaunch != null) {
+        stringResource(id = R.string.stats_minutes_per_launch, minutesPerLaunch)
+    } else {
+        ""
+    }
+    val checkingPart = if (insight.checkingHeavy) {
+        stringResource(id = R.string.stats_checking_heavy_flag)
+    } else {
+        ""
+    }
+
+    return listOf(unlockPart, launchPart, checkingPart)
+        .filter { it.isNotBlank() }
+        .joinToString(separator = " • ")
+}
+
+@Composable
+private fun formatDeltaText(comparison: MetricComparison, selectedMetric: StatsMetric): String? {
+    val delta = comparison.deltaValue ?: return null
+    val deltaPercent = comparison.deltaPercent
+    val prefix = if (delta >= 0) "+" else "-"
+    val magnitude = delta.absoluteValue
+
+    val deltaValueText = when (selectedMetric) {
+        StatsMetric.ScreenTime -> formatDuration(magnitude)
+        StatsMetric.Opens -> magnitude.toString()
+    }
+
+    return if (deltaPercent == null) {
+        "$prefix$deltaValueText"
+    } else {
+        val pct = deltaPercent.absoluteValue.roundToInt()
+        "$prefix$deltaValueText ($prefix$pct%)"
     }
 }
 

@@ -19,7 +19,46 @@ data class StatsUiState(
     val totalDisplayValue: String = "0m",
     val totalDisplayLabel: String = "Total",
     val averageDisplayValue: String = "0m",
-    val averageDisplayLabel: String = "Avg per hour"
+    val averageDisplayLabel: String = "Avg per hour",
+    val phaseOneInsights: PhaseOneInsights? = null
+)
+
+data class PhaseOneInsights(
+    val comparison: ComparisonInsight,
+    val peakHours: PeakHoursInsight,
+    val unlockEfficiency: UnlockEfficiencyInsight,
+    val concentration: ConcentrationInsight
+)
+
+data class ComparisonInsight(
+    val screenTime: MetricComparison,
+    val opens: MetricComparison,
+    val unlocks: MetricComparison,
+    val mostUsedDayUtc: Long?
+)
+
+data class MetricComparison(
+    val currentValue: Long,
+    val previousValue: Long?,
+    val deltaValue: Long?,
+    val deltaPercent: Double?
+)
+
+data class PeakHoursInsight(
+    val topHours: List<Int>,
+    val lateNightPercentage: Int
+)
+
+data class UnlockEfficiencyInsight(
+    val minutesPerUnlock: Double?,
+    val minutesPerLaunch: Double?,
+    val checkingHeavy: Boolean
+)
+
+data class ConcentrationInsight(
+    val top1Percentage: Int,
+    val top3Percentage: Int,
+    val top5Percentage: Int
 )
 
 /**

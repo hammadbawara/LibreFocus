@@ -129,6 +129,16 @@ fun StatsScreen(
                         averageLabel = uiState.averageDisplayLabel
                     )
                 }
+
+                item {
+                    uiState.phaseOneInsights?.let { insights ->
+                        PhaseOneInsightsSection(
+                            insights = insights,
+                            selectedMetric = metric,
+                            formatted = formattedPrefs
+                        )
+                    }
+                }
                 
                 item {
                     Spacer(modifier = Modifier.height(8.dp))

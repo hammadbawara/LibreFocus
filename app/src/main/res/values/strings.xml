@@ -12,4 +12,23 @@
     <string name="stats_total_unlocks_title">Total unlocks</string>
     <string name="stats_app_usage_duration">%1$s</string>
     <string name="stats_app_usage_launches">%1$d opens</string>
+
+    <!-- Phase 1 Insights -->
+    <string name="stats_insights_header">Highlights</string>
+    <string name="stats_metric_screen_time">Screen time</string>
+    <string name="stats_metric_opens">Opens</string>
+    <string name="stats_metric_unlocks">Unlocks</string>
+    <string name="stats_change_card_title">Change vs last period (%1$s)</string>
+    <string name="stats_change_no_history">%1$s • Not enough history yet</string>
+    <string name="stats_change_with_delta">%1$s • %2$s</string>
+    <string name="stats_peak_card_title">Peak hours + late-night usage</string>
+    <string name="stats_peak_card_value">Peak: %1$s • Late-night: %2$d%%</string>
+    <string name="stats_unlock_efficiency_title">Unlock efficiency</string>
+    <string name="stats_unlock_efficiency_no_data">No unlock data in this range.</string>
+    <string name="stats_minutes_per_unlock">%.1f min/unlock</string>
+    <string name="stats_minutes_per_launch">%.1f min/open</string>
+    <string name="stats_checking_heavy_flag">Frequent checking pattern</string>
+    <string name="stats_concentration_title">Top-app concentration</string>
+    <string name="stats_concentration_value">Top 3 apps: %1$d%% • Top 1: %2$d%% • Top 5: %3$d%%</string>
+    <string name="stats_most_used_day">Most used day: %1$s</string>
 </resources>
