@@ -19,6 +19,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 class StatsViewModel(
@@ -770,20 +771,12 @@ class StatsViewModel(
             startUtc = consistencyWindowStartUtc,
             endUtc = period.endUtc
         )
-        val consistencyWindowMap = consistencyWindowDaily.associateBy { it.bucketStartUtc }
-
-        val consistencyDayBuckets = buildList {
-            var cursor = consistencyWindowStartUtc
-            while (cursor < period.endUtc) {
-                add(cursor)
-                cursor += TimeUnit.DAYS.toMillis(1)
+        val consistencyDailyMinutes = consistencyWindowDaily
+            .sortedBy { it.bucketStartUtc }
+            .map { day ->
+                day.totalUsageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()
             }
-        }
-
-        val consistencyDailyMinutes = consistencyDayBuckets.map { dayStartUtc ->
-            val usageMillis = consistencyWindowMap[dayStartUtc]?.totalUsageMillis ?: 0L
-            usageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()
-        }
+        val observedConsistencyDays = consistencyDailyMinutes.size
 
         val baselineMinutes = if (consistencyDailyMinutes.isNotEmpty()) {
             consistencyDailyMinutes.average().roundToInt()
@@ -803,7 +796,11 @@ class StatsViewModel(
         }
 
         val cv = if (mean > 0.0) stdDev / mean else 0.0
-        val consistencyScore = ((1.0 - cv.coerceIn(0.0, 1.0)) * 100.0).roundToInt()
+        val consistencyScore = if (observedConsistencyDays >= 3) {
+            ((1.0 - cv.coerceIn(0.0, 1.0)) * 100.0).roundToInt()
+        } else {
+            0
+        }
 
         val baselineMedianMinutes = run {
             val values = consistencyDailyMinutes
@@ -821,7 +818,11 @@ class StatsViewModel(
         ).associateBy { it.bucketStartUtc }
 
         var streak = 0
-        var cursorDayUtc = period.endUtc - TimeUnit.DAYS.toMillis(1)
+        val latestRecordedDayUtc = streakDaily.keys.maxOrNull()
+        var cursorDayUtc = min(
+            period.endUtc - TimeUnit.DAYS.toMillis(1),
+            latestRecordedDayUtc ?: (period.endUtc - TimeUnit.DAYS.toMillis(1))
+        )
         while (cursorDayUtc >= streakLookbackStartUtc) {
             val localDay = Instant.ofEpochMilli(cursorDayUtc).atZone(zoneId).toLocalDate()
             if (localDay.isAfter(todayLocal)) {
@@ -829,7 +830,8 @@ class StatsViewModel(
                 continue
             }
 
-            val usageMinutes = ((streakDaily[cursorDayUtc]?.totalUsageMillis ?: 0L)
+            val dayUsage = streakDaily[cursorDayUtc] ?: break
+            val usageMinutes = (dayUsage.totalUsageMillis
                 .toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble())
 
             if (usageMinutes <= controlledThreshold.toDouble()) {
@@ -880,8 +882,8 @@ class StatsViewModel(
         val currentDistinctByDay = distinctByDay(currentSprawlEntries)
         val previousDistinctByDay = distinctByDay(previousSprawlEntries)
 
-        val currentDaysCount = max(1L, sprawlWindowDays).toInt()
-        val previousDaysCount = max(1L, sprawlWindowDays).toInt()
+        val currentDaysCount = max(1, currentDistinctByDay.size)
+        val previousDaysCount = max(1, previousDistinctByDay.size)
         val currentAvgDistinct = currentDistinctByDay.values.sum().toDouble() / currentDaysCount.toDouble()
         val previousAvgDistinct = if (previousDistinctByDay.isNotEmpty()) {
             previousDistinctByDay.values.sum().toDouble() / previousDaysCount.toDouble()

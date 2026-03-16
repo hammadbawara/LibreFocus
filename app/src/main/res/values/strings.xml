@@ -40,8 +40,8 @@
     <string name="stats_phase_two_streaks_title">Streaks and consistency</string>
     <string name="stats_phase_two_streaks_value">Controlled streak: %1$d days • Consistency: %2$d/100 • Volatility: %3$d min • Baseline: %4$d min/day</string>
     <string name="stats_phase_two_sprawl_title">App sprawl</string>
-    <string name="stats_phase_two_sprawl_value">%.1f apps/day • %2$s%3$d%% vs last period</string>
-    <string name="stats_phase_two_sprawl_value_no_previous">%.1f apps/day • Not enough previous history</string>
+    <string name="stats_phase_two_sprawl_value">%.0f apps/day • %2$s%3$d%% vs last period</string>
+    <string name="stats_phase_two_sprawl_value_no_previous">%.0f apps/day • Not enough previous history</string>
     <string name="stats_phase_two_less">Less</string>
     <string name="stats_phase_two_more">More</string>
 </resources>
