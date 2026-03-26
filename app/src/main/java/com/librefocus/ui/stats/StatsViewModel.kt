@@ -18,9 +18,14 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
 
 class StatsViewModel(
     private val usageRepository: UsageTrackingRepository,
@@ -262,7 +267,12 @@ class StatsViewModel(
                 val phaseTwoInsights = buildPhaseTwoInsights(
                     period = period
                 )
-                
+
+                val phaseThreeInsights = buildPhaseThreeInsights(
+                    period = period,
+                    range = _range.value
+                )
+
                 val activeUsageBuckets = filledUsagePoints.count { it.totalUsageMillis > 0 }
                 val averageSessionMillis = if (activeUsageBuckets > 0) {
                     totalUsageMillis / activeUsageBuckets
@@ -307,7 +317,8 @@ class StatsViewModel(
                     averageDisplayValue = averageDisplayValue,
                     averageDisplayLabel = averageDisplayLabel,
                     phaseOneInsights = insights,
-                    phaseTwoInsights = phaseTwoInsights
+                    phaseTwoInsights = phaseTwoInsights,
+                    phaseThreeInsights = phaseThreeInsights
                 )
             }.onSuccess { state ->
                 _uiState.value = state
@@ -909,6 +920,190 @@ class StatsViewModel(
             heatmap = heatmap,
             streaks = streaks,
             appSprawl = appSprawl
+        )
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Phase 3: Predictions & Correlations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private suspend fun buildPhaseThreeInsights(
+        period: StatsPeriodState,
+        range: StatsRange
+    ): PhaseThreeInsights {
+        val zoneId = formattedPreferences.value?.zoneId ?: ZoneId.systemDefault()
+        val todayStartUtc = LocalDate.now(zoneId).atStartOfDay(zoneId).toInstant().toEpochMilli()
+        val isViewingToday = range == StatsRange.Day && period.startUtc == todayStartUtc
+        val forecast = if (isViewingToday) buildForecastInsight(period) else null
+        val correlation = buildCorrelationInsight(period)
+        return PhaseThreeInsights(forecast = forecast, correlation = correlation)
+    }
+
+    /**
+     * Builds an end-of-day forecast for today.
+     * Projects remaining hours using per-hour medians from the same weekday over the last 4 weeks.
+     * Only called when the selected Day period is the current calendar day.
+     */
+    private suspend fun buildForecastInsight(period: StatsPeriodState): EndOfDayForecastInsight {
+        val zoneId = formattedPreferences.value?.zoneId ?: ZoneId.systemDefault()
+        val currentHour = ZonedDateTime.now(zoneId).hour
+
+        // Fetch actual usage for the day being viewed
+        val todayEntries = usageRepository.getHourlyUsageEntriesInTimeRange(
+            startUtc = period.startUtc,
+            endUtc = period.endUtc
+        )
+        val actualUsageMillis = todayEntries.sumOf { it.usageDurationMillis }
+
+        // Collect same-weekday data from the past 4 weeks
+        val weekday = Instant.ofEpochMilli(period.startUtc).atZone(zoneId).toLocalDate().dayOfWeek
+        val weekdayName = weekday.getDisplayName(TextStyle.FULL, Locale.getDefault())
+
+        // Build per-hour maps for up to 4 past same-weekday occurrences
+        val pastWeekHourMaps = mutableListOf<Map<Int, Long>>() // each map: hour -> millis
+        for (weeksBack in 1..4) {
+            val pastDayStart = period.startUtc - TimeUnit.DAYS.toMillis(7L * weeksBack)
+            val pastDayEnd = pastDayStart + TimeUnit.DAYS.toMillis(1L)
+            val pastEntries = usageRepository.getHourlyUsageEntriesInTimeRange(
+                startUtc = pastDayStart,
+                endUtc = pastDayEnd
+            )
+            if (pastEntries.isNotEmpty()) {
+                val hourMap = mutableMapOf<Int, Long>()
+                pastEntries.forEach { entry ->
+                    val h = Instant.ofEpochMilli(entry.hourStartUtc).atZone(zoneId).hour
+                    hourMap[h] = (hourMap[h] ?: 0L) + entry.usageDurationMillis
+                }
+                pastWeekHourMaps += hourMap
+            }
+        }
+
+        val weeksUsed = pastWeekHourMaps.size
+
+        // Typical full-day median for the same weekday
+        val pastDayTotals = pastWeekHourMaps.map { it.values.sum() }.sorted()
+        val typicalSameWeekdayMillis: Long? = if (pastDayTotals.isNotEmpty()) {
+            val mid = pastDayTotals.size / 2
+            if (pastDayTotals.size % 2 == 0) {
+                (pastDayTotals[mid - 1] + pastDayTotals[mid]) / 2
+            } else {
+                pastDayTotals[mid]
+            }
+        } else null
+
+        // Project remaining hours using per-hour medians from past same-weekday data
+        val remainingForecastMillis: Long
+        val forecastedTotalMillis: Long
+        if (weeksUsed > 0) {
+            var remainingSum = 0L
+            for (h in (currentHour + 1)..23) {
+                val hourValues = pastWeekHourMaps.mapNotNull { it[h] }.sorted()
+                if (hourValues.isNotEmpty()) {
+                    val mid = hourValues.size / 2
+                    remainingSum += if (hourValues.size % 2 == 0) {
+                        (hourValues[mid - 1] + hourValues[mid]) / 2
+                    } else {
+                        hourValues[mid]
+                    }
+                }
+            }
+            remainingForecastMillis = remainingSum
+            forecastedTotalMillis = actualUsageMillis + remainingForecastMillis
+        } else {
+            remainingForecastMillis = 0L
+            forecastedTotalMillis = actualUsageMillis
+        }
+
+        // Delta vs typical (in %)
+        val typicalDeltaPercent: Int? = typicalSameWeekdayMillis?.let { typical ->
+            if (typical > 0L) {
+                (((forecastedTotalMillis - typical).toDouble() / typical.toDouble()) * 100.0).roundToInt()
+            } else null
+        }
+
+        val confidence = when (weeksUsed) {
+            0, 1 -> ForecastConfidence.LOW
+            2, 3 -> ForecastConfidence.MEDIUM
+            else -> ForecastConfidence.HIGH
+        }
+
+        return EndOfDayForecastInsight(
+            actualUsageMillis = actualUsageMillis,
+            forecastedTotalMillis = forecastedTotalMillis,
+            remainingForecastMillis = remainingForecastMillis,
+            typicalSameWeekdayMillis = typicalSameWeekdayMillis,
+            typicalDeltaPercent = typicalDeltaPercent,
+            currentHour = currentHour,
+            weeksUsed = weeksUsed,
+            confidence = confidence,
+            weekdayName = weekdayName
+        )
+    }
+
+    /**
+     * Computes the Pearson correlation between daily unlock count and daily screen time
+     * over a fixed 30-day rolling window ending at [period.endUtc].
+     * Returns null when fewer than 7 paired days are available.
+     */
+    private suspend fun buildCorrelationInsight(period: StatsPeriodState): CorrelationInsight? {
+        // Use the selected range, but extend back to at least 30 days to ensure meaningful correlation
+        val lookbackStartUtc = minOf(period.startUtc, period.endUtc - TimeUnit.DAYS.toMillis(30L))
+        val dailyUsage = usageRepository.getUsageTotalsGroupedByDay(
+            startUtc = lookbackStartUtc,
+            endUtc = period.endUtc
+        )
+        val dailyUnlocks = usageRepository.getDailyUnlockSummary(
+            startUtc = lookbackStartUtc,
+            endUtc = period.endUtc
+        )
+
+        // Join by day bucket key
+        val usageByDay = dailyUsage.associateBy { it.bucketStartUtc }
+        data class Pair(val unlocks: Double, val usageMinutes: Double)
+        val pairs = dailyUnlocks.mapNotNull { unlock ->
+            val usage = usageByDay[unlock.dateUtc] ?: return@mapNotNull null
+            if (unlock.totalUnlocks <= 0 || usage.totalUsageMillis <= 0L) return@mapNotNull null
+            Pair(
+                unlocks = unlock.totalUnlocks.toDouble(),
+                usageMinutes = usage.totalUsageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()
+            )
+        }
+
+        if (pairs.size < 3) return null
+
+        val n = pairs.size.toDouble()
+        val xs = pairs.map { it.unlocks }
+        val ys = pairs.map { it.usageMinutes }
+        val mx = xs.average()
+        val my = ys.average()
+        val stdX = sqrt(xs.sumOf { (it - mx) * (it - mx) } / n)
+        val stdY = sqrt(ys.sumOf { (it - my) * (it - my) } / n)
+
+        val r = if (stdX > 0.0 && stdY > 0.0) {
+            pairs.sumOf { (it.unlocks - mx) * (it.usageMinutes - my) } / (n * stdX * stdY)
+        } else {
+            0.0
+        }
+        val rClamped = r.coerceIn(-1.0, 1.0)
+
+        val strength = when {
+            abs(rClamped) < 0.15 -> CorrelationStrength.NONE
+            abs(rClamped) < 0.35 -> CorrelationStrength.WEAK
+            abs(rClamped) < 0.60 -> CorrelationStrength.MODERATE
+            else -> CorrelationStrength.STRONG
+        }
+
+        val message = when {
+            rClamped > 0.35  -> CorrelationMessage.MORE_UNLOCKS_MORE_TIME
+            rClamped < -0.25 -> CorrelationMessage.MORE_UNLOCKS_SHORTER_SESSIONS
+            else             -> CorrelationMessage.UNLOCKS_NOT_PREDICTIVE
+        }
+
+        return CorrelationInsight(
+            pearsonR = rClamped,
+            strength = strength,
+            dayCount = pairs.size,
+            message = message
         )
     }
 }

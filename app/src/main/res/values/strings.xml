@@ -44,4 +44,33 @@
     <string name="stats_phase_two_sprawl_value_no_previous">%.0f apps/day • Not enough previous history</string>
     <string name="stats_phase_two_less">Less</string>
     <string name="stats_phase_two_more">More</string>
+
+    <!-- Phase 3: Predictions & Correlations -->
+    <string name="stats_phase_three_header">Predictions &amp; Correlations</string>
+
+    <!-- Forecast card -->
+    <string name="stats_forecast_title">End-of-day forecast</string>
+    <string name="stats_forecast_projected">Projected today</string>
+    <string name="stats_forecast_used_so_far">Used so far: %1$s</string>
+    <string name="stats_forecast_remaining">Remaining: ~%1$s</string>
+    <string name="stats_forecast_typical_day">Typical %1$s: %2$s</string>
+    <string name="stats_forecast_based_on">Based on %1$d similar %2$s</string>
+    <string name="stats_forecast_confidence_high">High confidence</string>
+    <string name="stats_forecast_confidence_medium">Medium confidence</string>
+    <string name="stats_forecast_confidence_low">Low confidence</string>
+    <string name="stats_forecast_no_history">Not enough history yet</string>
+    <string name="stats_forecast_vs_typical_more">%1$s more than typical</string>
+    <string name="stats_forecast_vs_typical_less">%1$s less than typical</string>
+    <string name="stats_forecast_vs_typical_same">On track with your typical %1$s</string>
+
+    <!-- Correlation card -->
+    <string name="stats_correlation_title">Unlock habits</string>
+    <string name="stats_correlation_more_unlocks_more_time">On high-unlock days you tend to use your phone more — unlocks are driving screen time.</string>
+    <string name="stats_correlation_not_predictive">Your unlock count and screen time don\'t follow a clear pattern — what you do after unlocking varies a lot.</string>
+    <string name="stats_correlation_shorter_sessions">More unlocks aren\'t leading to more screen time — they may signal frequent but brief check-ins.</string>
+    <string name="stats_correlation_days_analyzed">Analyzed %1$d days</string>
+    <string name="stats_correlation_strength_strong">Strong</string>
+    <string name="stats_correlation_strength_moderate">Moderate</string>
+    <string name="stats_correlation_strength_weak">Weak</string>
+    <string name="stats_correlation_strength_none">No pattern</string>
 </resources>

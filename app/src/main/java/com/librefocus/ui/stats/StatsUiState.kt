@@ -21,7 +21,8 @@ data class StatsUiState(
     val averageDisplayValue: String = "0m",
     val averageDisplayLabel: String = "Avg per hour",
     val phaseOneInsights: PhaseOneInsights? = null,
-    val phaseTwoInsights: PhaseTwoInsights? = null
+    val phaseTwoInsights: PhaseTwoInsights? = null,
+    val phaseThreeInsights: PhaseThreeInsights? = null
 )
 
 data class PhaseOneInsights(
@@ -93,6 +94,66 @@ data class AppSprawlInsight(
     val avgDistinctAppsPerDay: Double,
     val previousAvgDistinctAppsPerDay: Double?,
     val deltaPercent: Int?
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3: Predictions & Correlations
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum class ForecastConfidence { LOW, MEDIUM, HIGH }
+
+enum class CorrelationStrength { NONE, WEAK, MODERATE, STRONG }
+
+enum class CorrelationMessage {
+    MORE_UNLOCKS_MORE_TIME,
+    UNLOCKS_NOT_PREDICTIVE,
+    MORE_UNLOCKS_SHORTER_SESSIONS
+}
+
+/**
+ * End-of-day forecast for today.
+ * Only produced when the selected Day period is the current calendar day.
+ *
+ * @param actualUsageMillis usage recorded so far today.
+ * @param forecastedTotalMillis projected total for the full day.
+ * @param remainingForecastMillis projected usage still to come this day.
+ * @param typicalSameWeekdayMillis median total for the same weekday over last 4 weeks (null if no history).
+ * @param typicalDeltaPercent % delta between projected total and typical (null when no history).
+ * @param currentHour hour-of-day at computation time.
+ * @param weeksUsed number of past same-weekday weeks used in forecast (0–4).
+ * @param confidence forecast confidence level derived from weeksUsed.
+ * @param weekdayName localised weekday name for display (e.g. "Thursday").
+ */
+data class EndOfDayForecastInsight(
+    val actualUsageMillis: Long,
+    val forecastedTotalMillis: Long,
+    val remainingForecastMillis: Long,
+    val typicalSameWeekdayMillis: Long?,
+    val typicalDeltaPercent: Int?,
+    val currentHour: Int,
+    val weeksUsed: Int,
+    val confidence: ForecastConfidence,
+    val weekdayName: String
+)
+
+/**
+ * Pearson correlation between daily unlock count and daily screen time over the last 30 days.
+ *
+ * @param pearsonR raw correlation coefficient (−1.0 to 1.0).
+ * @param strength categorised magnitude.
+ * @param dayCount number of paired days used in the calculation.
+ * @param message human-readable interpretation to display in the UI.
+ */
+data class CorrelationInsight(
+    val pearsonR: Double,
+    val strength: CorrelationStrength,
+    val dayCount: Int,
+    val message: CorrelationMessage
+)
+
+data class PhaseThreeInsights(
+    val forecast: EndOfDayForecastInsight?,   // null when range != Day
+    val correlation: CorrelationInsight?       // null when < 7 paired days
 )
 
 /**

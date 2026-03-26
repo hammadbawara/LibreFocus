@@ -169,6 +169,12 @@ fun StatsScreen(
                 }
 
                 item {
+                    uiState.phaseThreeInsights?.let { insights ->
+                        PhaseThreeInsightsSection(insights = insights, range = range)
+                    }
+                }
+
+                item {
                     Spacer(modifier = Modifier.height(4.dp))
                 }
 
