@@ -2,11 +2,13 @@ package com.librefocus.data.local.database.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Represents aggregated daily device unlock information.
  * Stores unlock counts per hour to enable fast analytics queries.
  */
+@Serializable
 @Entity(tableName = "daily_device_usage")
 data class DailyDeviceUsageEntity(
     @PrimaryKey(autoGenerate = true)

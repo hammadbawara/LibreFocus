@@ -1,6 +1,8 @@
 package com.librefocus.data.repository
 
 import android.util.Log
+import com.librefocus.data.local.AppInfoProvider
+import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
 import com.librefocus.data.local.database.dao.DailyDeviceUsageDao
@@ -11,7 +13,6 @@ import com.librefocus.data.local.database.entity.AppEntity
 import com.librefocus.data.local.database.entity.DailyDeviceUsageEntity
 import com.librefocus.data.local.database.entity.HourlyAppUsageEntity
 import com.librefocus.data.local.database.entity.SyncMetadataEntity
-import com.librefocus.data.local.UsageStatsProvider
 import com.librefocus.models.AppUsageData
 import com.librefocus.models.HourlyUsageData
 import com.librefocus.models.UsageValuePoint
@@ -29,6 +30,7 @@ import java.util.concurrent.TimeUnit
  */
 class UsageTrackingRepository(
     private val usageStatsProvider: UsageStatsProvider,
+    private val appInfoProvider: AppInfoProvider,
     private val appCategoryDao: AppCategoryDao,
     private val appDao: AppDao,
     private val hourlyAppUsageDao: HourlyAppUsageDao,
@@ -43,13 +45,11 @@ class UsageTrackingRepository(
     }
 
     suspend fun syncUsageStats() = withContext(Dispatchers.IO) {
-        try{
+        try {
             val lastTimeSyncDayStartUtc: Long = getLastSyncTime()?.let {
                 roundToDayStart(it)
             } ?: 0L
             val currentUtc = System.currentTimeMillis()
-
-            ensureDefaultCategoryExists()
 
             val hourlyUsageMap = usageStatsProvider.getHourlyUsageStatistics(lastTimeSyncDayStartUtc, currentUtc)
             saveHourlyUsageData(hourlyUsageMap)
@@ -57,18 +57,15 @@ class UsageTrackingRepository(
             updateLastSyncTime(currentUtc)
 
             Log.d(TAG, "Sync completed successfully. Processed ${hourlyUsageMap.size} data")
-    } catch (e: Exception) {
-        Log.e(TAG, "Error syncing usage stats", e)
-        throw e
-    }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error syncing usage stats", e)
+            throw e
+        }
     }
 
     private suspend fun saveHourlyUsageData(
         hourlyUsageMap: Map<Pair<String, Long>, Pair<Long, Int>>
     ) {
-        val defaultCategory = appCategoryDao.getCategoryByName(DEFAULT_CATEGORY_NAME)
-            ?: throw IllegalStateException("Default category not found")
-
         hourlyUsageMap.forEach { (key, value) ->
             val (packageName, hourStartUtc) = key
             val (usageDuration, launchCount) = value
@@ -76,15 +73,23 @@ class UsageTrackingRepository(
             // Ensure app exists in database
             var app = appDao.getAppByPackageName(packageName)
             if (app == null) {
-                val appName = usageStatsProvider.getAppName(packageName)
+                // Get app info
+                val appName = appInfoProvider.getAppName(packageName)
+                val categoryName = appInfoProvider.getAppCategory(packageName)
+                
+                // Ensure category exists
+                val category = ensureCategoryExists(categoryName)
+                
+                // Insert app with proper category
                 val appId = appDao.insertApp(
                     AppEntity(
                         packageName = packageName,
                         appName = appName,
-                        categoryId = defaultCategory.id
+                        categoryId = category.id
                     )
                 )
                 app = appDao.getAppById(appId.toInt())
+                Log.d(TAG, "Added app: $appName (category: $categoryName)")
             }
 
             if (app != null) {
@@ -120,19 +125,27 @@ class UsageTrackingRepository(
     }
 
     /**
-     * Ensures the default category exists in the database.
+     * Ensures a category exists in the database, creates it if not found.
+     * System categories (from Android) are marked as non-custom.
+     * 
+     * @param categoryName The name of the category to ensure exists
+     * @return The category entity
      */
-    private suspend fun ensureDefaultCategoryExists() {
-        val existing = appCategoryDao.getCategoryByName(DEFAULT_CATEGORY_NAME)
-        if (existing == null) {
-            appCategoryDao.insertCategory(
+    private suspend fun ensureCategoryExists(categoryName: String): AppCategoryEntity {
+        var category = appCategoryDao.getCategoryByName(categoryName)
+        if (category == null) {
+            val categoryId = appCategoryDao.insertCategory(
                 AppCategoryEntity(
-                    categoryName = DEFAULT_CATEGORY_NAME,
+                    categoryName = categoryName,
                     isCustom = false,
                     addedAtUtc = System.currentTimeMillis()
                 )
             )
+            category = appCategoryDao.getCategoryById(categoryId.toInt())
+                ?: throw IllegalStateException("Failed to create category: $categoryName")
+            Log.d(TAG, "Created new category: $categoryName")
         }
+        return category
     }
 
     /**

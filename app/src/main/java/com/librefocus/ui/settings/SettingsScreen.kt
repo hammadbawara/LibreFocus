@@ -2,6 +2,8 @@ package com.librefocus.ui.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,73 +12,145 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.librefocus.models.DateFormat
 import com.librefocus.models.TimeFormat
+import com.librefocus.ui.common.AppBottomNavigationBar
+import com.librefocus.ui.common.AppScaffold
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import androidx.core.net.toUri
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    navController: NavController,
+    currentRoute: String?,
     viewModel: SettingsViewModel = koinViewModel(),
     onBackClick: () -> Unit
 ) {
     val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
     val dateTimePrefs by viewModel.dateTimePreferences.collectAsStateWithLifecycle()
     val formattedPrefs by viewModel.formattedPreferences.collectAsStateWithLifecycle()
+    val backupState by viewModel.backupState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showRestoreWarningDialog by remember { mutableStateOf(false) }
+    var showRestoreConfirmDialog by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
+    var showResetVerificationDialog by remember { mutableStateOf(false) }
+    var resetVerificationText by remember { mutableStateOf("") }
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // Document picker launchers
+    val backupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        uri?.let { viewModel.createAndExportBackup(it) }
+    }
+    
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            pendingRestoreUri = it
+            showRestoreWarningDialog = true
+        }
+    }
+    
+    // Handle backup state changes
+    LaunchedEffect(backupState) {
+        when (backupState) {
+            is BackupState.Success -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = (backupState as BackupState.Success).message,
+                        duration = SnackbarDuration.Short
+                    )
+                    viewModel.clearBackupState()
+                }
+            }
+            is BackupState.Error -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = (backupState as BackupState.Error).message,
+                        duration = SnackbarDuration.Long
+                    )
+                    viewModel.clearBackupState()
+                }
+            }
+            else -> {}
+        }
+    }
     var showTimeFormatDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var showTimeZoneDialog by remember { mutableStateOf(false) }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
+    
+    AppScaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = { scrollBehavior->
+            LargeTopAppBar(
                 title = { Text("Settings") },
-//                navigationIcon = {
-//                    IconButton(onClick = onBackClick) {
-//                        Icon(
-//                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-//                            contentDescription = "Back"
-//                        )
-//                    }
-//                }
+                scrollBehavior = scrollBehavior
+            )
+        },
+        bottomBar = {scrollBehavior ->
+            AppBottomNavigationBar(
+                navController = navController,
+                currentRoute = currentRoute,
+                scrollBehavior = scrollBehavior
             )
         }
     ) { paddingValues ->
@@ -107,6 +181,82 @@ fun SettingsScreen(
                         )
                     },
                     onClick = { showThemeDialog = true }
+                )
+            }
+            
+            SettingsGroup(
+                title = { Text("App Management") }
+            ) {
+                SettingsMenuLink(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Category,
+                            contentDescription = null
+                        )
+                    },
+                    title = { Text("Manage Categories") },
+                    subtitle = { Text("Organize apps into custom categories") },
+                    onClick = {
+                        navController.navigate("categories")
+                    }
+                )
+            }
+            
+            SettingsGroup(
+                title = { Text("Data Management") }
+            ) {
+                SettingsMenuLink(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Backup,
+                            contentDescription = null
+                        )
+                    },
+                    title = { Text("Backup Data") },
+                    subtitle = { Text("Export all database to a file") },
+                    onClick = {
+                        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                        backupLauncher.launch("librefocusdata$timestamp.zip")
+                    }
+                )
+                
+                SettingsMenuLink(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Restore,
+                            contentDescription = null
+                        )
+                    },
+                    title = { Text("Restore Data") },
+                    subtitle = { Text("Replace all data from backup file") },
+                    onClick = {
+                        restoreLauncher.launch(arrayOf("application/zip"))
+                    }
+                )
+                
+                SettingsMenuLink(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.DeleteForever,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    title = { 
+                        Text(
+                            "Reset All Data",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    subtitle = { 
+                        Text(
+                            "Permanently delete all database",
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                        )
+                    },
+                    onClick = {
+                        showResetConfirmDialog = true
+                    }
                 )
             }
             
@@ -423,6 +573,256 @@ fun SettingsScreen(
                     Text("Cancel")
                 }
             }
+        )
+    }
+    
+    // Restore warning dialog (Step 1)
+    if (showRestoreWarningDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showRestoreWarningDialog = false
+                pendingRestoreUri = null
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Restore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = { Text("Restore Data?") },
+            text = {
+                Text(
+                    "Warning: This will delete ALL existing data and replace it with the backup data.\\n\\n" +
+                    "Your current data will be permanently lost.\\n\\n" +
+                    "Do you want to continue?"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRestoreWarningDialog = false
+                        showRestoreConfirmDialog = true
+                    }
+                ) {
+                    Text("Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showRestoreWarningDialog = false
+                        pendingRestoreUri = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Restore final confirmation dialog (Step 2)
+    if (showRestoreConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showRestoreConfirmDialog = false
+                pendingRestoreUri = null
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Restore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { 
+                Text(
+                    "Final Confirmation",
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            text = {
+                Text(
+                    buildAnnotatedString {
+                        append("Are you sure you want to ")
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)) {
+                            append("replace all existing data")
+                        }
+                        append(" with the backup?\\n\\n")
+                        append("This action cannot be undone.")
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingRestoreUri?.let { uri ->
+                            viewModel.importAndRestoreBackup(uri)
+                        }
+                        showRestoreConfirmDialog = false
+                        pendingRestoreUri = null
+                    }
+                ) {
+                    Text(
+                        "Yes, Replace All Data",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showRestoreConfirmDialog = false
+                        pendingRestoreUri = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Reset confirmation dialog (Step 1)
+    if (showResetConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirmDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.DeleteForever,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { 
+                Text(
+                    "Reset All Data?",
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            text = {
+                Text(
+                    "This will permanently delete all database including:\n\n" +
+                    "• Hourly usage history\n" +
+                    "• Daily device usage\n" +
+                    "• App list\n" +
+                    "• App categories\n" +
+                    "• Limits and schedules\n" +
+                    "• Sync metadata\n\n" +
+                    "This action cannot be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showResetConfirmDialog = false
+                        showResetVerificationDialog = true
+                    }
+                ) {
+                    Text(
+                        "Continue",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Reset verification dialog (Step 2)
+    if (showResetVerificationDialog) {
+        val isTextCorrect = resetVerificationText == "Delete"
+        
+        AlertDialog(
+            onDismissRequest = {
+                showResetVerificationDialog = false
+                resetVerificationText = ""
+            },
+            title = { Text("Final Confirmation") },
+            text = {
+                Column {
+                    Text(
+                        "Type \"Delete\" to confirm you want to permanently delete all data:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextField(
+                        value = resetVerificationText,
+                        onValueChange = { resetVerificationText = it },
+                        label = { Text("Type \"Delete\"") },
+                        isError = resetVerificationText.isNotEmpty() && !isTextCorrect,
+                        supportingText = if (resetVerificationText.isNotEmpty() && !isTextCorrect) {
+                            {
+                                Text(
+                                    buildAnnotatedString {
+                                        append("Incorrect. Expected: ")
+                                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                            append("Delete")
+                                        }
+                                    },
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        } else null,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (isTextCorrect) {
+                            viewModel.resetAllData()
+                            showResetVerificationDialog = false
+                            resetVerificationText = ""
+                        }
+                    },
+                    enabled = isTextCorrect
+                ) {
+                    Text(
+                        "Delete All Data",
+                        color = if (isTextCorrect) 
+                            MaterialTheme.colorScheme.error 
+                        else 
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showResetVerificationDialog = false
+                        resetVerificationText = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Loading indicator overlay
+    if (backupState is BackupState.InProgress) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Please Wait") },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                    Text((backupState as BackupState.InProgress).message)
+                }
+            },
+            confirmButton = { }
         )
     }
 }

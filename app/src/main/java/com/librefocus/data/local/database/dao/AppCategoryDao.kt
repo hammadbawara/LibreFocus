@@ -9,9 +9,6 @@ import androidx.room.Update
 import com.librefocus.data.local.database.entity.AppCategoryEntity
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Data Access Object for app categories.
- */
 @Dao
 interface AppCategoryDao {
     
@@ -23,6 +20,9 @@ interface AppCategoryDao {
     
     @Query("SELECT * FROM app_categories WHERE categoryName = :categoryName LIMIT 1")
     suspend fun getCategoryByName(categoryName: String): AppCategoryEntity?
+    
+    @Query("SELECT * FROM app_categories WHERE systemCategoryId = :systemCategoryId LIMIT 1")
+    suspend fun getCategoryBySystemId(systemCategoryId: Int): AppCategoryEntity?
     
     @Query("SELECT * FROM app_categories WHERE isCustom = :isCustom")
     fun getCategoriesByType(isCustom: Boolean): Flow<List<AppCategoryEntity>>
@@ -41,4 +41,17 @@ interface AppCategoryDao {
     
     @Query("DELETE FROM app_categories WHERE id = :categoryId")
     suspend fun deleteCategoryById(categoryId: Int)
+    
+    // Synchronous methods for backup/restore operations
+    @Query("SELECT * FROM app_categories ORDER BY categoryName ASC")
+    fun getAllCategoriesSync(): List<AppCategoryEntity>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertCategoriesSync(categories: List<AppCategoryEntity>): List<Long>
+    
+    @Query("DELETE FROM app_categories WHERE id = :categoryId")
+    fun deleteCategorySync(categoryId: Int)
+    
+    @Query("DELETE FROM app_categories")
+    fun deleteAllCategories()
 }

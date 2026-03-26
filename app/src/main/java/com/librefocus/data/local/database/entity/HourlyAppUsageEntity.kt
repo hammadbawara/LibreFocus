@@ -4,11 +4,13 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Represents hourly aggregated app usage data.
  * All timestamps are stored in UTC to avoid timezone issues.
  */
+@Serializable
 @Entity(
     tableName = "hourly_app_usage",
     foreignKeys = [

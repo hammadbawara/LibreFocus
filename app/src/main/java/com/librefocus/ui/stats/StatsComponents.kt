@@ -910,7 +910,8 @@ private fun AppSprawlInsightCard(insight: AppSprawlInsight) {
 @Composable
 fun AppUsageListItem(
     appUsage: AppUsageData,
-    totalUsageMillis: Long = 0L
+    totalUsageMillis: Long = 0L,
+    onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var appIcon by remember { mutableStateOf<Drawable?>(null) }
@@ -927,7 +928,8 @@ fun AppUsageListItem(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors()
+        colors = CardDefaults.cardColors(),
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier

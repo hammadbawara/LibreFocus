@@ -2,11 +2,13 @@ package com.librefocus.data.local.database.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Stores metadata about the last sync operation.
  * Used to track the last time usage stats were fetched from the system.
  */
+@Serializable
 @Entity(tableName = "sync_metadata")
 data class SyncMetadataEntity(
     @PrimaryKey

@@ -78,6 +78,8 @@ com/librefocus/
 └── ui/
     ├── MainActivity.kt
     ├── MainViewModel.kt
+    ├── common/
+    │   └── AppScaffold.kt           # Common scaffold for consistent UI behavior
     ├── navigation/
     │   ├── NavGraph.kt              # Main navigation graph
     │   └── Screen.kt                # Screen routes
@@ -176,8 +178,8 @@ com/librefocus/
   - [ ] Category-based statistics
   
 - [ ] **App Categorization**
-  - [ ] Auto-categorization logic
-  - [ ] Custom category CRUD operations
+  - [x] Auto-categorization logic
+  - [x] Custom category CRUD operations
   - [ ] Category-based insights UI
   
 - [ ] **Prevention Tools**
@@ -206,6 +208,7 @@ com/librefocus/
 #### 3. UI/UX Improvements
 - [x] ~~Complete insights/analytics screens~~
 - [x] ~~Settings screen with theme and date/time configuration~~
+- [x] Common AppScaffold component for UI consistency across screens
 - [ ] App categorization management UI
 - [ ] Gamification dashboard
 - [ ] Prevention tools settings
@@ -231,6 +234,7 @@ com/librefocus/
 - **DO** use Koin for all dependency injection
 - **DO** use DataStore for simple key-value preferences
 - **DO** use Room for complex structured data (usage history, categories, gamification)
+- **DO** isolate Android-specific APIs in provider/utility classes (e.g., AppInfoProvider)
 
 #### Code Quality
 - **DO** use Kotlin coroutines for async operations
@@ -262,6 +266,7 @@ com/librefocus/
 - **DON'T** access repositories directly from UI layer
 - **DON'T** mix navigation logic with UI composables
 - **DON'T** create god classes or ViewModels
+- **DON'T** use Android-specific APIs directly in UI, ViewModel, or Repository layers
 
 #### Dependencies & Libraries
 - **DON'T** use Hilt/Dagger (use Koin instead)
@@ -275,6 +280,7 @@ com/librefocus/
 - **DON'T** hardcode strings (use string resources)
 - **DON'T** hardcode colors or dimensions (use theme system)
 - **DON'T** create memory leaks (avoid Activity/Fragment references in ViewModels)
+- **DON'T** create custom DateTimeFormatter instances - **ALWAYS use DateTimeFormatterManager** for consistency across the app
 
 #### Data Layer
 - **DON'T** perform database operations on main thread
@@ -418,6 +424,14 @@ com/librefocus/
 - **Color.kt** - Color palette definitions
 - **Type.kt** - Typography definitions
 
+#### Common UI Components
+- **AppScaffold.kt** - Common scaffold wrapper for consistent app behavior
+  - Provides unified Scaffold with customizable top bar, bottom bar, FAB, and snackbar
+  - Automatically collapses top app bar on scroll for better UX
+  - Combines scroll behaviors for top and bottom bars using nestedScroll
+  - Includes AppBottomNavigationBar for consistent bottom navigation across screens
+  - Used by all main screens (Home, Stats, Settings, Categories, Limits) for UI consistency
+
 ---
 
 ## 🎨 Date & Time Settings System Architecture
@@ -550,7 +564,7 @@ When generating code:
    - Proper annotations
    - Koin injection setup
    - Error handling
-   - Documentation comments
+   - Add comments only where the code is not self-explanatory or could be ambiguous
 
 4. **Follow naming conventions**:
    - ViewModels: `[Feature]ViewModel.kt`
@@ -631,10 +645,12 @@ When generating code:
 - ✅ Koin dependency injection
 - ✅ Coroutine usage for async operations
 - ✅ DateTimeFormatterManager for all date/time display
+- ✅ Android-specific APIs isolated in provider/utility classes
 
 **Date/Time Formatting:**
 - ✅ NEVER hardcode date/time patterns
-- ✅ ALWAYS use DateTimeFormatterManager
+- ✅ NEVER create custom DateTimeFormatter instances
+- ✅ ALWAYS use DateTimeFormatterManager for all date/time display
 - ✅ Store timestamps in UTC milliseconds
 - ✅ Convert to display timezone at UI layer only
 - ✅ Inject DateTimeFormatterManager into ViewModels that need formatting

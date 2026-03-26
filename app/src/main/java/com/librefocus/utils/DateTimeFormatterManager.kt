@@ -1,7 +1,6 @@
 package com.librefocus.utils
 
 import android.content.Context
-import android.text.format.DateFormat as AndroidDateFormat
 import com.librefocus.models.DateFormat
 import com.librefocus.models.DateTimePreferences
 import com.librefocus.models.TimeFormat
@@ -15,6 +14,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import android.text.format.DateFormat as AndroidDateFormat
 
 /**
  * Centralized manager for date and time formatting throughout the app.

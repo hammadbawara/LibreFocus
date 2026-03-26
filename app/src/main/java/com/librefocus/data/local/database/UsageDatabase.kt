@@ -8,16 +8,21 @@ import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
 import com.librefocus.data.local.database.dao.DailyDeviceUsageDao
 import com.librefocus.data.local.database.dao.HourlyAppUsageDao
+import com.librefocus.data.local.database.dao.LimitDao
 import com.librefocus.data.local.database.dao.SyncMetadataDao
 import com.librefocus.data.local.database.entity.AppCategoryEntity
 import com.librefocus.data.local.database.entity.AppEntity
 import com.librefocus.data.local.database.entity.DailyDeviceUsageEntity
 import com.librefocus.data.local.database.entity.HourlyAppUsageEntity
+import com.librefocus.data.local.database.entity.LaunchCountEntity
+import com.librefocus.data.local.database.entity.LimitEntity
+import com.librefocus.data.local.database.entity.ScheduleLimitEntity
 import com.librefocus.data.local.database.entity.SyncMetadataEntity
+import com.librefocus.data.local.database.entity.UsageLimitEntity
 
 /**
  * Main Room database for LibreFocus app.
- * Contains all usage tracking, categories, and metadata.
+ * Contains all usage tracking, categories, limits, and metadata.
  */
 @Database(
     entities = [
@@ -25,9 +30,13 @@ import com.librefocus.data.local.database.entity.SyncMetadataEntity
         AppEntity::class,
         HourlyAppUsageEntity::class,
         DailyDeviceUsageEntity::class,
-        SyncMetadataEntity::class
+        SyncMetadataEntity::class,
+        LimitEntity::class,
+        ScheduleLimitEntity::class,
+        UsageLimitEntity::class,
+        LaunchCountEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(RoomTypeConverters::class)
@@ -42,6 +51,8 @@ abstract class UsageDatabase : RoomDatabase() {
     abstract fun syncMetadataDao(): SyncMetadataDao
 
     abstract fun dailyDeviceUsageDao(): DailyDeviceUsageDao
+    
+    abstract fun limitDao(): LimitDao
     
     companion object {
         const val DATABASE_NAME = "librefocus_usage_database"

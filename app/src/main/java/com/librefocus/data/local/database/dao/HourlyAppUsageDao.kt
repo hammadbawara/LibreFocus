@@ -44,6 +44,17 @@ interface HourlyAppUsageDao {
     
     @Query("""
         SELECT * FROM hourly_app_usage 
+        WHERE appId = :appId AND hourStartUtc >= :startUtc AND hourStartUtc < :endUtc
+        ORDER BY hourStartUtc ASC
+    """)
+    suspend fun getAppUsageInTimeRangeOnce(
+        appId: Int,
+        startUtc: Long,
+        endUtc: Long
+    ): List<HourlyAppUsageEntity>
+    
+    @Query("""
+        SELECT * FROM hourly_app_usage 
         WHERE appId = :appId AND hourStartUtc = :hourStartUtc
         LIMIT 1
     """)
@@ -79,4 +90,20 @@ interface HourlyAppUsageDao {
         startUtc: Long,
         endUtc: Long
     ): Long?
+    
+    // Synchronous methods for backup/restore operations
+    @Query("SELECT * FROM hourly_app_usage ORDER BY hourStartUtc ASC")
+    fun getAllUsage(): kotlinx.coroutines.flow.Flow<List<HourlyAppUsageEntity>>
+    
+    @Query("SELECT * FROM hourly_app_usage ORDER BY hourStartUtc ASC")
+    fun getAllUsageSync(): List<HourlyAppUsageEntity>
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertUsageSync(usages: List<HourlyAppUsageEntity>): List<Long>
+    
+    @Query("DELETE FROM hourly_app_usage WHERE id = :id")
+    fun deleteUsageSync(id: Int)
+    
+    @Query("DELETE FROM hourly_app_usage")
+    fun deleteAllUsage()
 }
