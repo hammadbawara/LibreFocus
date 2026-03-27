@@ -206,12 +206,19 @@ open class StatsContentViewModel(
 
     fun onCustomRangeSelected(startLocalMillis: Long, endLocalMillis: Long) {
         val formatted = formattedPreferences.value ?: return
-        // Convert local timestamps to UTC for storage and querying
+        
+        // Convert local timestamps to UTC dates
         val startLocalDate = formatted.toLocalDate(startLocalMillis)
         val endLocalDate = formatted.toLocalDate(endLocalMillis)
-
-        val startUtc = startLocalDate.atStartOfDay(formatted.zoneId).toInstant().toEpochMilli()
-        val endUtc = endLocalDate.plusDays(1).atStartOfDay(formatted.zoneId).toInstant().toEpochMilli()
+        
+        // Convert to UTC day boundaries (for daily grouping alignment)
+        val startUtcDate = startLocalDate.atStartOfDay(formatted.zoneId).toInstant()
+            .atZone(java.time.ZoneOffset.UTC).toLocalDate()
+        val endUtcDate = endLocalDate.atStartOfDay(formatted.zoneId).toInstant()
+            .atZone(java.time.ZoneOffset.UTC).toLocalDate()
+        
+        val startUtc = startUtcDate.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        val endUtc = endUtcDate.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
 
         if (endUtc <= startUtc) {
             _uiState.update { it.copy(errorMessage = "Invalid range selection.") }
@@ -229,7 +236,7 @@ open class StatsContentViewModel(
     private fun refreshData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            //runCatching {
+            runCatching {
                 val period = _periodState.value  // Now guaranteed non-null
                 val metric = _metric.value
 
@@ -310,11 +317,11 @@ open class StatsContentViewModel(
                     averageDisplayValue = averageDisplayValue,
                     averageDisplayLabel = averageDisplayLabel
                 )
-//            }.onSuccess { state ->
-//                _uiState.value = state
-//            }.onFailure { throwable ->
-//                _uiState.update { it.copy(isLoading = false, errorMessage = throwable.message) }
-//            }
+            }.onSuccess { state ->
+                _uiState.value = state
+            }.onFailure { throwable ->
+                _uiState.update { it.copy(isLoading = false, errorMessage = throwable.message) }
+            }
         }
     }
 
@@ -349,6 +356,7 @@ open class StatsContentViewModel(
     }
 
     private fun periodForDate(localDate: LocalDate, formatted: FormattedDateTimePreferences): StatsPeriodState {
+        // For day view, use local timezone boundaries (for hourly grouping)
         val dayStartLocal = localDate.atStartOfDay(formatted.zoneId)
         val dayStartUtc = dayStartLocal.toInstant().toEpochMilli()
         val dayEndUtc = dayStartLocal.plusDays(1).toInstant().toEpochMilli()
@@ -361,10 +369,11 @@ open class StatsContentViewModel(
     }
 
     private fun periodForWeek(localDateTime: ZonedDateTime, formatted: FormattedDateTimePreferences): StatsPeriodState {
-        val dayStartLocal = localDateTime.toLocalDate().atStartOfDay(formatted.zoneId)
-        val weekStartLocal = dayStartLocal.minusDays(6)
-        val weekStartUtc = weekStartLocal.toInstant().toEpochMilli()
-        val weekEndUtc = weekStartLocal.plusDays(7).toInstant().toEpochMilli()
+        // For weekly view, align to UTC day boundaries (for daily grouping)
+        val currentUtcDay = localDateTime.toInstant().atZone(java.time.ZoneOffset.UTC).toLocalDate()
+        val weekStartUtcDay = currentUtcDay.minusDays(6)
+        val weekStartUtc = weekStartUtcDay.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        val weekEndUtc = weekStartUtcDay.plusDays(7).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
         val label = formatRangeLabel(weekStartUtc, TimeUnit.DAYS.toMillis(7), formatted)
         return StatsPeriodState(
             startUtc = weekStartUtc,
@@ -374,10 +383,12 @@ open class StatsContentViewModel(
     }
 
     private fun periodForMonth(localDateTime: ZonedDateTime, formatted: FormattedDateTimePreferences): StatsPeriodState {
-        val monthStartLocal = localDateTime.withDayOfMonth(1).toLocalDate().atStartOfDay(formatted.zoneId)
-        val nextMonthStartLocal = monthStartLocal.plusMonths(1)
-        val monthStartUtc = monthStartLocal.toInstant().toEpochMilli()
-        val monthEndUtc = nextMonthStartLocal.toInstant().toEpochMilli()
+        // For monthly view, align to UTC day boundaries (for daily grouping)
+        val currentUtcDate = localDateTime.toInstant().atZone(java.time.ZoneOffset.UTC).toLocalDate()
+        val monthStartUtcDay = currentUtcDate.withDayOfMonth(1)
+        val nextMonthStartUtcDay = monthStartUtcDay.plusMonths(1)
+        val monthStartUtc = monthStartUtcDay.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        val monthEndUtc = nextMonthStartUtcDay.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
         val label = formatted.formatMonthLabel(monthStartUtc)
         return StatsPeriodState(
             startUtc = monthStartUtc,
@@ -404,16 +415,19 @@ open class StatsContentViewModel(
             StatsRange.Week, StatsRange.Month, StatsRange.Custom -> TimeUnit.DAYS.toMillis(1)
         }
 
-        // Work with UTC timestamps throughout - no conversion
+        // Filter points within the period range
         val filteredPoints = points.filter { point ->
             point.bucketStartUtc >= period.startUtc && point.bucketStartUtc < period.endUtc
         }
 
-        if (filteredPoints.isEmpty()) {
+        // Create a map for quick lookup
+        val pointMap = filteredPoints.associateBy { it.bucketStartUtc }
+
+        if (pointMap.isEmpty()) {
             return generateEmptySeries(period.startUtc, period.endUtc, bucketSizeMillis)
         }
 
-        val pointMap = filteredPoints.associateBy { it.bucketStartUtc }
+        // Fill in missing buckets with zero values
         val filledPoints = mutableListOf<UsageValuePoint>()
         var cursor = period.startUtc
 
