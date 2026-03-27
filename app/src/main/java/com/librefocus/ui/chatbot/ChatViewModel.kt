@@ -2,184 +2,455 @@ package com.librefocus.ui.chatbot
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.librefocus.BuildConfig
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
+import com.librefocus.ai.llm.ChatMessage
+import com.librefocus.ai.llm.LLMClient
+import com.librefocus.ai.llm.LLMClientProvider
+import com.librefocus.ai.llm.LlmPrompt
+import com.librefocus.ai.llm.LlmResponse
+import com.librefocus.data.IApiKeyProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
-data class Message(val text: String, val isFromUser: Boolean)
+data class Message(val text: String, val isFromUser: Boolean, val model: String? = null, val thought: String? = null)
 
-@Serializable
-data class GroqRequest(
-    val model: String,
-    val messages: List<GroqMessage>
-)
+open class ChatViewModel(
+    private val chatContextProvider: IChatContextProvider,
+    private val llmProvider: LLMClientProvider,
+    private val chatRepository: com.librefocus.data.repository.ChatRepository,
+    private val preferencesRepository: com.librefocus.data.repository.PreferencesRepository,
+    private val apiKeyProvider: IApiKeyProvider,
+    private var model: String = "llama-3.3-70b-versatile"
+) : ViewModel(), IChatViewModel {
 
-@Serializable
-data class GroqMessage(
-    val role: String,
-    val content: String
-)
+    private fun clampTitle(raw: String?, maxChars: Int = 48): String? {
+        val trimmed = raw?.trim()?.ifBlank { null } ?: return null
+        return if (trimmed.length <= maxChars) trimmed else trimmed.take(maxChars - 3) + "..."
+    }
 
-@Serializable
-data class GroqResponse(
-    val choices: List<Choice> = emptyList()
-)
+    private fun sanitizeCandidateTitle(raw: String?): String? {
+        val trimmed = raw?.trim()?.ifBlank { null } ?: return null
+        val suspicious = trimmed.startsWith("{") || trimmed.contains("\"error\"", ignoreCase = true) || trimmed.contains("error:", ignoreCase = true)
+        if (suspicious) return null
+        return clampTitle(trimmed)
+    }
 
-@Serializable
-data class Choice(
-    val message: GroqMessage? = null,
-    val text: String? = null
-)
+    private suspend fun loadStoredTitle(id: String): String? = runCatching {
+        preferencesRepository.getConversationTitle(id).first()
+    }.getOrNull()
 
-open class ChatViewModel(private val chatContextProvider: IChatContextProvider, private val model: String = "llama-3.3-70b-versatile") : ViewModel() {
+    private suspend fun persistTitle(id: String, title: String?) {
+        preferencesRepository.setConversationTitle(id, title)
+        _currentConversationTitle.value = title
+    }
 
-    private val _messages = MutableStateFlow<List<Message>>(emptyList())
-    val messages: StateFlow<List<Message>> = _messages
+    private fun hasApiKey(): Boolean = runCatching { apiKeyProvider.getKey(activeProvider) }.getOrNull().isNullOrBlank().not()
 
-    // Shared Json instance used by both the HTTP client and manual decoding
-    private val json = Json {
-        ignoreUnknownKeys = true
-        coerceInputValues = true
+    private var awaitingInitialAiTitle: MutableMap<String, Boolean> = mutableMapOf()
+
+    private suspend fun tryGenerateAiTitle(id: String, client: LLMClient): Boolean {
+        if (!hasApiKey()) return false
+        val recent = conversationHistory.takeLast(10).ifEmpty { return false }
+        val conversationSummary = recent.joinToString("\n") { entry ->
+            val role = entry.role.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+            "$role: ${entry.content}"
+        }.ifBlank { null }
+        val promptInput = conversationSummary ?: "User question: ${_messages.value.firstOrNull { it.isFromUser }?.text ?: "New chat"}"
+        val titlePrompt = LlmPrompt(
+            system = "You generate short, vivid titles for chat conversations. Respond with 6 words max.",
+            user = promptInput
+        )
+        val titleResp = runCatching { client.sendPrompt(titlePrompt) }.getOrNull() ?: return false
+        val suggested = titleResp.rawText.takeIf { it.isNotBlank() } ?: titleResp.structuredJson?.let { extractAssistantText(it) }
+        val candidate = sanitizeCandidateTitle(suggested)
+        if (candidate.isNullOrBlank()) return false
+        persistTitle(id, candidate)
+        return true
+    }
+
+    private suspend fun applyFallbackTitle(id: String, text: String) {
+        val fallback = clampTitle(text.lineSequence().firstOrNull()) ?: return
+        persistTitle(id, fallback)
+    }
+
+    // Convenience constructor for previews/tests that don't have an LLMClient available.
+    @Suppress("unused")
+    constructor(chatContextProvider: IChatContextProvider) : this(
+        chatContextProvider,
+        object : LLMClientProvider {
+            override fun getClient(provider: String): LLMClient = object : LLMClient { override suspend fun sendPrompt(prompt: LlmPrompt) = LlmResponse(rawText = "(noop)") }
+        },
+        com.librefocus.data.repository.ChatRepository(object : com.librefocus.data.local.database.dao.ChatMessageDao {
+            override suspend fun insert(message: com.librefocus.data.local.database.entity.ChatMessageEntity): Long { return 0 }
+            override suspend fun getMessagesForConversation(conversationId: String): List<com.librefocus.data.local.database.entity.ChatMessageEntity> = emptyList()
+            override suspend fun deleteConversation(conversationId: String) {}
+            override suspend fun getConversationSummaries(): List<com.librefocus.data.local.database.dao.ChatMessageDao.ConversationSummary> = emptyList()
+        }),
+        com.librefocus.data.repository.PreferencesRepository(com.librefocus.data.local.PreferencesDataStore(android.content.ContextWrapper(null))),
+        object : IApiKeyProvider {
+            override fun saveKey(provider: String, key: String) {}
+            override fun getKey(provider: String): String? = null
+            override fun clearKey(provider: String) {}
+        }
+    )
+
+    private var conversationId: String? = null
+    // Active provider (e.g., "groq", "openai", "anthropic"). Default to groq for now.
+    private var activeProvider: String = "groq"
+
+    // Keep an LLM-compatible conversation history separate from UI Message objects
+    private val conversationHistory = mutableListOf<ChatMessage>()
+
+    // Cap for non-system messages to keep requests small
+    private val maxHistoryItems = 40 // counts user+assistant messages (non-system)
+
+    // StateFlow backing field for UI messages and public contract implementation
+    private val _messages: MutableStateFlow<List<Message>> = MutableStateFlow(emptyList())
+    override val messages: StateFlow<List<Message>> get() = _messages
+
+    // Conversations summary list and public flow
+    private val _conversations: MutableStateFlow<List<ConversationSummary>> = MutableStateFlow(emptyList())
+    override val conversations: StateFlow<List<ConversationSummary>> get() = _conversations
+
+    // Current conversation title flow
+    private val _currentConversationTitle: MutableStateFlow<String?> = MutableStateFlow(null)
+    override val currentConversationTitle: StateFlow<String?> get() = _currentConversationTitle
+
+    // Shared Json instance used by parsers
+    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
+
+    init {
+        viewModelScope.launch {
+            try {
+                // load conversation summaries (will populate titles via refreshConversations)
+                try { refreshConversations() } catch (_: Exception) {}
+
+                // Start with a fresh empty conversation when the user opens the chat screen.
+                // The user can select a previous conversation explicitly from the drawer; we will not auto-load the last one.
+                val newId = chatRepository.newConversationId()
+                conversationId = newId
+                try { preferencesRepository.setLastConversationId(newId) } catch (_: Exception) {}
+                _currentConversationTitle.value = preferencesRepository.getConversationTitle(newId).first()
+
+                // Initialize provider/model for this new conversation from preferences (if any)
+                try {
+                    val prov = preferencesRepository.getConversationProvider(newId).first()
+                    val mdl = preferencesRepository.getConversationModel(newId).first()
+                    if (!prov.isNullOrBlank()) activeProvider = prov
+                    if (!mdl.isNullOrBlank()) model = mdl
+                } catch (_: Exception) {}
+
+            } catch (_: Exception) {
+                // ignore load errors
+                if (conversationId == null) conversationId = try { chatRepository.newConversationId() } catch (_: Exception) { "" }
+            }
+        }
     }
 
     // Try multiple strategies to extract a human-readable assistant response from raw JSON
     private fun extractAssistantText(raw: String): String? {
-        // 1) Preferred: proper GroqResponse shape
+        // 1) Try to find "message" or "choices"
         try {
-            val gr = json.decodeFromString(GroqResponse.serializer(), raw)
-            val choice = gr.choices.firstOrNull()
-            val maybe = choice?.message?.content ?: choice?.text
-            if (!maybe.isNullOrBlank()) return maybe
-        } catch (_: Exception) {
-            // fall through
-        }
+            val elem = json.parseToJsonElement(raw)
 
-        // 2) Parse generically and look for common keys
-        val elem = try {
-            json.parseToJsonElement(raw)
-        } catch (_: Exception) {
-            return null
-        }
+            fun findInObject(obj: kotlinx.serialization.json.JsonObject): String? {
+                listOf("choices", "output", "result", "response", "message", "data", "text", "content").forEach { key ->
+                    val v = obj[key]
+                    if (v != null) {
+                        if (key == "choices" && v is kotlinx.serialization.json.JsonArray) {
+                            val first = v.firstOrNull()
+                            if (first is kotlinx.serialization.json.JsonObject) {
+                                val msg = first["message"]?.let { m -> (m as? kotlinx.serialization.json.JsonObject)?.get("content") }
+                                val t = msg ?: first["text"] ?: first["content"]
+                                if (t is kotlinx.serialization.json.JsonPrimitive && t.isString) return t.content
+                            }
+                        }
 
-        fun findInObject(obj: JsonObject): String? {
-            // common direct paths
-            listOf("choices", "output", "result", "response", "message", "data", "text", "content").forEach { key ->
-                val v = obj[key]
-                if (v != null) {
-                    // choices array
-                    if (key == "choices" && v is JsonArray) {
-                        val first = v.firstOrNull()
-                        if (first is JsonObject) {
-                            // try message.content
-                            val msg = first["message"]?.let { m -> (m as? JsonObject)?.get("content") }
-                            val t = msg ?: first["text"] ?: first["content"]
-                            if (t is JsonPrimitive && t.isString) return t.content
+                        if (v is kotlinx.serialization.json.JsonPrimitive && v.isString) return v.content
+                        if (v is kotlinx.serialization.json.JsonObject) {
+                            val nested = findInObject(v)
+                            if (!nested.isNullOrBlank()) return nested
+                        }
+                        if (v is kotlinx.serialization.json.JsonArray) {
+                            val fromArr = v.mapNotNull { item ->
+                                if (item is kotlinx.serialization.json.JsonPrimitive) {
+                                    if (item.isString) item.content else null
+                                } else if (item is kotlinx.serialization.json.JsonObject) {
+                                    findInObject(item)
+                                } else null
+                            }.firstOrNull { it.isNotBlank() }
+                            if (!fromArr.isNullOrBlank()) return fromArr
                         }
                     }
-
-                    // direct string
-                    if (v is JsonPrimitive && v.isString) return v.content
-                    if (v is JsonObject) {
-                        val nested = findInObject(v)
-                        if (!nested.isNullOrBlank()) return nested
-                    }
-                    if (v is JsonArray) {
-                        val fromArr = v.mapNotNull { item ->
-                            when (item) {
-                                is JsonPrimitive -> if (item.isString) item.content else null
-                                is JsonObject -> findInObject(item)
-                                is JsonArray -> null
-                            }
-                        }.firstOrNull { it.isNotBlank() }
-                        if (!fromArr.isNullOrBlank()) return fromArr
-                    }
                 }
+                return null
             }
 
-            return null
-        }
-
-        fun findLongestString(elem: JsonElement): String? {
-            return when (elem) {
-                is JsonPrimitive -> if (elem.isString) elem.content else null
-                is JsonObject -> elem.values.mapNotNull { findLongestString(it) }.maxByOrNull { it.length }
-                is JsonArray -> elem.mapNotNull { findLongestString(it) }.maxByOrNull { it.length }
+            if (elem is kotlinx.serialization.json.JsonObject) {
+                val byKey = findInObject(elem)
+                if (!byKey.isNullOrBlank()) return byKey
             }
+        } catch (_: Exception) {
+            // ignore
         }
 
-        if (elem is JsonObject) {
-            val byKey = findInObject(elem)
-            if (!byKey.isNullOrBlank()) return byKey
-        }
-
-        // Fallback: largest string anywhere in document
-        val longest = findLongestString(elem)
-        return if (!longest.isNullOrBlank()) longest else null
+        // Fallback: return raw
+        return raw.ifBlank { null }
     }
 
-    private val client = HttpClient {
-        install(ContentNegotiation) {
-            json(json)
-        }
+    private fun trimConversationHistory() {
+        // Keep all system messages, but limit non-system messages (user/assistant) to the last maxHistoryItems
+        val systemMessages = conversationHistory.filter { it.role == "system" }
+        val nonSystem = conversationHistory.filter { it.role != "system" }
+        val trimmedNonSystem = if (nonSystem.size > maxHistoryItems) nonSystem.takeLast(maxHistoryItems) else nonSystem
+        conversationHistory.clear()
+        conversationHistory.addAll(systemMessages)
+        conversationHistory.addAll(trimmedNonSystem)
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        client.close()
-    }
-
-    open fun sendMessage(text: String) {
-        _messages.value = _messages.value + Message(text, true)
+    override fun sendMessage(text: String) {
+        // append user message locally for UI
+        _messages.value = _messages.value + Message(text, true, null, null)
 
         viewModelScope.launch {
             try {
+                val canUseAiTitles = hasApiKey()
+                val isFirstUserMessage = conversationHistory.count { it.role == "user" } == 0
+
+                // Get anonymized context from provider
                 val context = chatContextProvider.getBehaviorContext()
-                val response = client.post("https://api.groq.com/openai/v1/chat/completions") {
-                    header("Authorization", "Bearer ${BuildConfig.GROQ_API_KEY}")
-                    contentType(ContentType.Application.Json)
-                    setBody(GroqRequest(
-                        model = model,
-                        messages = listOf(
-                            GroqMessage("system", "You are a supportive digital wellbeing assistant. Here is the user's context:\n$context"),
-                            GroqMessage("user", text)
-                        )
-                    ))
+
+                // persona/system instruction
+                val systemInstruction = "You are a privacy-first digital wellbeing assistant. Only use the anonymized context provided. Return helpful, actionable recommendations. Be concise and prefer bullet points when giving steps."
+
+                // Ensure system instruction and context are present at the start of the conversation history
+                if (conversationHistory.none { it.role == "system" && it.content.contains("privacy-first") }) {
+                    conversationHistory.add(ChatMessage(role = "system", content = systemInstruction))
                 }
 
-                // Read raw response as text for parsing
-                val raw = response.bodyAsText()
-
-                // Try manual deserialization so we can catch and report parse errors
-                val groqResponse = try {
-                    json.decodeFromString(GroqResponse.serializer(), raw)
-                } catch (_: Exception) {
-                    null
+                // Add or update a dedicated system context message so LLM always receives up-to-date user behavioral context
+                // Replace existing 'context' system message if present
+                val contextIndex = conversationHistory.indexOfFirst { it.role == "system" && it.content.startsWith("CONTEXT:") }
+                val contextMessage = ChatMessage(role = "system", content = "CONTEXT:\n$context")
+                if (contextIndex >= 0) {
+                    conversationHistory[contextIndex] = contextMessage
+                } else {
+                    // add after initial system instruction
+                    val insertPos = conversationHistory.indexOfFirst { it.role == "system" } + 1
+                    val pos = if (insertPos > 0) insertPos else 0
+                    conversationHistory.add(pos, contextMessage)
                 }
 
-                val botResponse = extractAssistantText(raw)
-                    ?: groqResponse?.choices?.firstOrNull()?.message?.content
-                    ?: groqResponse?.choices?.firstOrNull()?.text
-                    ?: "(No response from assistant)"
-                _messages.value = _messages.value + Message(botResponse, false)
+                // Append the user message to the conversation history
+                val userMsg = ChatMessage(role = "user", content = text)
+                conversationHistory.add(userMsg)
+
+                // persist user message
+                try {
+                    conversationId?.let { chatRepository.saveMessage(it, "user", text, System.currentTimeMillis()) }
+                    // If conversation title missing, set a default title derived from this user message when AI titles unavailable
+                    try {
+                        conversationId?.let { id ->
+                            val existingTitle = loadStoredTitle(id)
+                            if (existingTitle.isNullOrBlank() && (!canUseAiTitles || !isFirstUserMessage)) {
+                                applyFallbackTitle(id, text)
+                            }
+                        }
+                    } catch (_: Exception) {}
+                } catch (_: Exception) {}
+
+                // Refresh conversation summaries after messages persisted
+                try { refreshConversations() } catch (_: Exception) {}
+
+                // Trim history to keep payload small
+                trimConversationHistory()
+
+                // Create prompt using full conversation history to keep context across turns
+                val prompt = LlmPrompt(
+                    system = systemInstruction,
+                    user = text,
+                    messages = conversationHistory.toList(),
+                    metadata = mapOf("model" to model, "provider" to activeProvider)
+                )
+
+                // Lookup provider-specific client
+                val client = llmProvider.getClient(activeProvider)
+
+                val resp: LlmResponse = client.sendPrompt(prompt)
+
+                val botResponseRaw = resp.structuredJson ?: resp.rawText
+                val assistantText = resp.error?.let { "Error from LLM: $it" } ?: extractAssistantText(botResponseRaw) ?: "(No response from assistant)"
+                val (thought, finalAnswer) = splitThought(assistantText)
+                val visibleAnswer = finalAnswer.ifBlank { "(No response from assistant)" }
+
+                // Append assistant to conversation history and UI messages
+                val assistantMsg = ChatMessage(role = "assistant", content = visibleAnswer)
+                conversationHistory.add(assistantMsg)
+
+                // persist assistant message
+                try {
+                    conversationId?.let { chatRepository.saveMessage(it, "assistant", visibleAnswer, System.currentTimeMillis()) }
+                } catch (_: Exception) {}
+
+                // Optionally generate a better title using the LLM (non-blocking, best-effort)
+                try {
+                    conversationId?.let { id ->
+                        val existingTitle = loadStoredTitle(id)
+                        if (existingTitle.isNullOrBlank()) {
+                            val shouldAttemptAi = canUseAiTitles && awaitingInitialAiTitle.getOrElse(id) { true }
+                            val generated = if (shouldAttemptAi) tryGenerateAiTitle(id, client) else false
+                            awaitingInitialAiTitle[id] = false
+                            if (!generated) {
+                                applyFallbackTitle(id, text)
+                            } else {
+                                refreshConversations()
+                            }
+                        } else {
+                            _currentConversationTitle.value = existingTitle
+                        }
+                    }
+                } catch (_: Exception) {}
+
+                // Refresh conversation summaries after assistant message
+                try { refreshConversations() } catch (_: Exception) {}
+
+                // Trim again to enforce cap
+                trimConversationHistory()
+
+                _messages.value = _messages.value + Message(visibleAnswer, false, model, thought)
             } catch (e: Exception) {
-                _messages.value = _messages.value + Message("Error: ${e.message}", false)
+                _messages.value = _messages.value + Message("Error: ${e.message}", false, model, null)
             }
+        }
+    }
+
+    private fun splitThought(raw: String): Pair<String?, String> {
+        val matches = Regex("<think>(.*?)</think>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+            .findAll(raw)
+            .map { it.groupValues[1].trim() }
+            .filter { it.isNotBlank() }
+            .toList()
+        val thought = matches.joinToString("\n\n").ifBlank { null }
+        val cleaned = raw.replace(Regex("<think>.*?</think>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "").trim()
+        return thought to cleaned
+    }
+
+    override fun setProvider(provider: String) {
+        activeProvider = provider
+        // persist for current conversation if available
+        viewModelScope.launch {
+            try {
+                conversationId?.let { preferencesRepository.setConversationProvider(it, provider) }
+            } catch (_: Exception) {}
+        }
+    }
+
+    override fun setModel(model: String) {
+        // update the model used in prompt metadata
+        this.model = model
+        // persist selection for current conversation
+        viewModelScope.launch {
+            try {
+                conversationId?.let { preferencesRepository.setConversationModel(it, model) }
+            } catch (_: Exception) {}
+        }
+    }
+
+    override fun refreshConversations() {
+        viewModelScope.launch {
+            try {
+                val sums = chatRepository.getConversationSummaries()
+                // map and include persisted title from preferencesRepository
+                val mapped = sums.map { s ->
+                    var title: String? = null
+                    try {
+                        title = preferencesRepository.getConversationTitle(s.conversation_id).first()
+                    } catch (_: Exception) {}
+                    ConversationSummary(s.conversation_id, s.lastMessage, s.lastTimestamp, title)
+                }
+                _conversations.value = mapped
+            } catch (_: Exception) {}
+        }
+    }
+
+    override fun renameConversation(conversationId: String, newTitle: String) {
+        viewModelScope.launch {
+            try {
+                preferencesRepository.setConversationTitle(conversationId, newTitle)
+                if (this@ChatViewModel.conversationId == conversationId) {
+                    _currentConversationTitle.value = newTitle
+                }
+                refreshConversations()
+            } catch (_: Exception) {}
+        }
+    }
+
+    override fun deleteConversation(conversationId: String) {
+        viewModelScope.launch {
+            try {
+                chatRepository.deleteConversation(conversationId)
+                preferencesRepository.setConversationTitle(conversationId, null)
+                preferencesRepository.setConversationProvider(conversationId, null)
+                preferencesRepository.setConversationModel(conversationId, null)
+                if (this@ChatViewModel.conversationId == conversationId) {
+                    // reset to a fresh conversation
+                    val newId = chatRepository.newConversationId()
+                    this@ChatViewModel.conversationId = newId
+                    conversationHistory.clear()
+                    _messages.value = emptyList()
+                    try { preferencesRepository.setLastConversationId(newId) } catch (_: Exception) {}
+                    _currentConversationTitle.value = preferencesRepository.getConversationTitle(newId).first()
+                }
+                refreshConversations()
+            } catch (_: Exception) {}
+        }
+    }
+
+    override fun newConversation() {
+        viewModelScope.launch {
+            val newId = chatRepository.newConversationId()
+            conversationId = newId
+            preferencesRepository.setLastConversationId(newId)
+            conversationHistory.clear()
+            _messages.value = emptyList()
+            // Load stored provider/model for this new conversation if set, otherwise leave defaults
+            try {
+                val prov = preferencesRepository.getConversationProvider(newId).first()
+                val mdl = preferencesRepository.getConversationModel(newId).first()
+                if (!prov.isNullOrBlank()) activeProvider = prov
+                if (!mdl.isNullOrBlank()) model = mdl
+            } catch (_: Exception) {}
+
+            _currentConversationTitle.value = preferencesRepository.getConversationTitle(newId).first()
+            awaitingInitialAiTitle[newId] = hasApiKey()
+        }
+    }
+
+    override fun selectConversation(conversationId: String) {
+        viewModelScope.launch {
+            try {
+                val saved = chatRepository.getConversation(conversationId)
+                conversationHistory.clear()
+                _messages.value = emptyList()
+                saved.forEach { e ->
+                    conversationHistory.add(ChatMessage(role = e.role, content = e.content))
+                    _messages.value = _messages.value + Message(e.content, e.role == "user", null, null)
+                }
+                this@ChatViewModel.conversationId = conversationId
+                preferencesRepository.setLastConversationId(conversationId)
+
+                // load provider/model for the selected conversation
+                try {
+                    val prov = preferencesRepository.getConversationProvider(conversationId).first()
+                    val mdl = preferencesRepository.getConversationModel(conversationId).first()
+                    if (!prov.isNullOrBlank()) activeProvider = prov
+                    if (!mdl.isNullOrBlank()) model = mdl
+                } catch (_: Exception) {}
+
+                _currentConversationTitle.value = preferencesRepository.getConversationTitle(conversationId).first()
+            } catch (_: Exception) {}
         }
     }
 }
