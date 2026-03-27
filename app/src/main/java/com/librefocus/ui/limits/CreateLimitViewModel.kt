@@ -126,7 +126,7 @@ class CreateLimitViewModel(
         _hasChangesState.value = true
     }
 
-    fun validateAndSave(): Boolean {
+    fun validate(): Boolean {
         val name = _limitNameState.value
         val apps = _selectedAppsState.value
         val config = _limitConfigurationState.value
@@ -139,9 +139,13 @@ class CreateLimitViewModel(
 
         _validationErrorsState.value = errors
 
-        if (errors.nameError || errors.limitTypeError || errors.appsError) {
-            return false
-        }
+        return !(errors.nameError || errors.limitTypeError || errors.appsError)
+    }
+
+    fun save() {
+        val config = _limitConfigurationState.value ?: return
+        val name = _limitNameState.value
+        val apps = _selectedAppsState.value
 
         viewModelScope.launch {
             val limit = when (config) {
@@ -166,7 +170,6 @@ class CreateLimitViewModel(
                     resetPeriod = config.resetPeriod,
                     selectedDays = config.selectedDays
                 )
-                null -> return@launch
             }
 
             if (_isEditMode.value && limitId != null) {
@@ -182,8 +185,6 @@ class CreateLimitViewModel(
 
             _hasChangesState.value = false
         }
-
-        return true
     }
 
     suspend fun getNextLimitNumber(): Int {

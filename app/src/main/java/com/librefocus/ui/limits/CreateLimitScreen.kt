@@ -33,12 +33,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.librefocus.ui.appselection.AppSelectionBottomSheet
 import com.librefocus.ui.common.AppScaffold
 import com.librefocus.ui.common.AppTopAppBar
 import com.librefocus.ui.common.PrimaryActionButton
+import com.librefocus.utils.PermissionUtils
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -64,8 +66,10 @@ fun CreateLimitScreen(
 
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showAppSelection by remember { mutableStateOf(false) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     BackHandler {
         if (hasChanges) {
@@ -124,9 +128,14 @@ fun CreateLimitScreen(
 
             PrimaryActionButton(
                 onClick = {
-                    val success = viewModel.validateAndSave()
-                    if (success) {
-                        onNavigateBack()
+                    val isValid = viewModel.validate()
+                    if (isValid) {
+                        if (!PermissionUtils.isAccessibilityServiceEnabled(context) || !PermissionUtils.canDrawOverlays(context)) {
+                            showPermissionDialog = true
+                        } else {
+                            viewModel.save()
+                            onNavigateBack()
+                        }
                     } else {
                         coroutineScope.launch {
                             val errorMessage = when {
@@ -180,6 +189,17 @@ fun CreateLimitScreen(
                 showAppSelection = false
             },
             preSelectedPackages = selectedApps.toSet()
+        )
+    }
+
+    if (showPermissionDialog) {
+        LimitsPermissionDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            onPermissionsGranted = {
+                showPermissionDialog = false
+                viewModel.save()
+                onNavigateBack()
+            }
         )
     }
 }
