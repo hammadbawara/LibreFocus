@@ -22,6 +22,7 @@ fun StatsMetric.displayName(): String {
     return when (this) {
         StatsMetric.ScreenTime -> "Screen time"
         StatsMetric.Opens -> "Opens"
+        StatsMetric.Unlocks -> "Unlocks"
     }
 }
 
@@ -113,6 +114,7 @@ fun calculateTotal(usagePoints: List<UsageValuePoint>, metric: StatsMetric): Lon
     return when (metric) {
         StatsMetric.ScreenTime -> usagePoints.sumOf { it.totalUsageMillis }
         StatsMetric.Opens -> usagePoints.sumOf { it.totalLaunchCount.toLong() }
+        StatsMetric.Unlocks -> usagePoints.sumOf { it.totalUnlockCount.toLong() }
     }
 }
 
@@ -140,10 +142,12 @@ fun formatAverageLabel(range: StatsRange, metric: StatsMetric): String {
         StatsRange.Day -> when (metric) {
             StatsMetric.ScreenTime -> "Avg per hour"
             StatsMetric.Opens -> "Avg opens per hour"
+            StatsMetric.Unlocks -> "Avg unlocks per hour"
         }
         else -> when (metric) {
             StatsMetric.ScreenTime -> "Avg per day"
             StatsMetric.Opens -> "Avg opens per day"
+            StatsMetric.Unlocks -> "Avg unlocks per day"
         }
     }
 }
@@ -157,6 +161,7 @@ fun formatTotalLabel(metric: StatsMetric): String {
     return when (metric) {
         StatsMetric.ScreenTime -> "Total"
         StatsMetric.Opens -> "Total opens"
+        StatsMetric.Unlocks -> "Total unlocks"
     }
 }
 

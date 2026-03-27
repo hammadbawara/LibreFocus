@@ -247,82 +247,37 @@ class UsageTrackingRepository(
 
     /**
      * Aggregates total usage duration and launches grouped by day for the supplied range.
+     * Also merges unlock counts from DailyDeviceUsageEntity.
      */
     suspend fun getUsageTotalsGroupedByDay(
         startUtc: Long,
         endUtc: Long
     ): List<UsageValuePoint> = withContext(Dispatchers.IO) {
-        val buckets = mutableMapOf<Long, Pair<Long, Int>>()
+        val buckets = mutableMapOf<Long, Triple<Long, Int, Int>>() // (usageMillis, launches, unlocks)
         val usageEntries = hourlyAppUsageDao.getUsageInTimeRangeOnce(startUtc, endUtc)
         usageEntries.forEach { entry ->
             val bucketKey = roundToDayStart(entry.hourStartUtc)
             if (bucketKey >= startUtc && bucketKey < endUtc) {
-                val current = buckets[bucketKey] ?: (0L to 0)
-                buckets[bucketKey] = (
-                    current.first + entry.usageDurationMillis to
-                    current.second + entry.launchCount
+                val current = buckets[bucketKey] ?: Triple(0L, 0, 0)
+                buckets[bucketKey] = Triple(
+                    current.first + entry.usageDurationMillis,
+                    current.second + entry.launchCount,
+                    current.third
                 )
             }
         }
-        buckets.entries
-            .sortedBy { it.key }
-            .map { (bucketStart, totals) ->
-                UsageValuePoint(
-                    bucketStartUtc = bucketStart,
-                    totalUsageMillis = totals.first,
-                    totalLaunchCount = totals.second
-                )
-            }
-    }
-
-    /**
-     * Aggregates usage duration and launches for a specific app, grouped by hour.
-     */
-    suspend fun getAppUsageTotalsGroupedByHour(
-        packageName: String,
-        startUtc: Long,
-        endUtc: Long
-    ): List<UsageValuePoint> = withContext(Dispatchers.IO) {
-        val app = appDao.getAppByPackageName(packageName) ?: return@withContext emptyList()
-        val buckets = mutableMapOf<Long, Pair<Long, Int>>()
-        val usageEntries = hourlyAppUsageDao.getAppUsageInTimeRangeOnce(app.id, startUtc, endUtc)
-        usageEntries.forEach { entry ->
-            val bucketKey = roundToHourStart(entry.hourStartUtc)
-            val current = buckets[bucketKey] ?: (0L to 0)
-            buckets[bucketKey] = (
-                current.first + entry.usageDurationMillis to
-                current.second + entry.launchCount
-            )
-        }
-        buckets.entries
-            .sortedBy { it.key }
-            .map { (bucketStart, totals) ->
-                UsageValuePoint(
-                    bucketStartUtc = bucketStart,
-                    totalUsageMillis = totals.first,
-                    totalLaunchCount = totals.second
-                )
-            }
-    }
-
-    /**
-     * Aggregates usage duration and launches for a specific app, grouped by day.
-     */
-    suspend fun getAppUsageTotalsGroupedByDay(
-        packageName: String,
-        startUtc: Long,
-        endUtc: Long
-    ): List<UsageValuePoint> = withContext(Dispatchers.IO) {
-        val app = appDao.getAppByPackageName(packageName) ?: return@withContext emptyList()
-        val buckets = mutableMapOf<Long, Pair<Long, Int>>()
-        val usageEntries = hourlyAppUsageDao.getAppUsageInTimeRangeOnce(app.id, startUtc, endUtc)
-        usageEntries.forEach { entry ->
-            val bucketKey = roundToDayStart(entry.hourStartUtc)
+        // Merge unlock counts
+        val rangeStart = roundToDayStart(startUtc)
+        val rangeEndExclusive = roundToDayStart(endUtc) + TimeUnit.DAYS.toMillis(1)
+        val unlockEntries = dailyDeviceUsageDao.getUsageForDayRange(rangeStart, rangeEndExclusive)
+        unlockEntries.forEach { unlockEntry ->
+            val bucketKey = unlockEntry.dateUtc
             if (bucketKey >= startUtc && bucketKey < endUtc) {
-                val current = buckets[bucketKey] ?: (0L to 0)
-                buckets[bucketKey] = (
-                    current.first + entry.usageDurationMillis to
-                    current.second + entry.launchCount
+                val current = buckets[bucketKey] ?: Triple(0L, 0, 0)
+                buckets[bucketKey] = Triple(
+                    current.first,
+                    current.second,
+                    current.third + unlockEntry.totalUnlocks
                 )
             }
         }
@@ -332,8 +287,19 @@ class UsageTrackingRepository(
                 UsageValuePoint(
                     bucketStartUtc = bucketStart,
                     totalUsageMillis = totals.first,
-                    totalLaunchCount = totals.second
+                    totalLaunchCount = totals.second,
+                    totalUnlockCount = totals.third
                 )
             }
+    }
+
+    /**
+     * Returns raw hourly usage entities in a range for advanced analytics.
+     */
+    suspend fun getHourlyUsageEntriesInTimeRange(
+        startUtc: Long,
+        endUtc: Long
+    ): List<HourlyAppUsageEntity> = withContext(Dispatchers.IO) {
+        hourlyAppUsageDao.getUsageInTimeRangeOnce(startUtc, endUtc)
     }
 }

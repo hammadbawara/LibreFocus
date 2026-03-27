@@ -14,7 +14,9 @@ data class HomeUiState(
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false,
     val error: String? = null,
-    val lastSyncTime: Long? = null
+    val lastSyncTime: Long? = null,
+    val todayScreenTimeMillis: Long = 0L,
+    val todayUnlocks: Int = 0
 )
 
 class HomeViewModel(
@@ -33,9 +35,12 @@ class HomeViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val apps = getTodayUsage()
+                val (screenTimeMillis, unlocks) = getTodaySummary()
                 _uiState.value = _uiState.value.copy(
                     apps = apps,
-                    isLoading = false
+                    isLoading = false,
+                    todayScreenTimeMillis = screenTimeMillis,
+                    todayUnlocks = unlocks
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -56,11 +61,14 @@ class HomeViewModel(
 
                 // Reload usage data after sync
                 val apps = getTodayUsage()
+                val (screenTimeMillis, unlocks) = getTodaySummary()
 
                 _uiState.value = _uiState.value.copy(
                     apps = apps,
                     isSyncing = false,
-                    lastSyncTime = System.currentTimeMillis()
+                    lastSyncTime = System.currentTimeMillis(),
+                    todayScreenTimeMillis = screenTimeMillis,
+                    todayUnlocks = unlocks
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -71,14 +79,26 @@ class HomeViewModel(
         }
     }
 
-    private suspend fun getTodayUsage(): List<AppUsage> {
-        val calendar = Calendar.getInstance().apply {
+    private fun todayStartMillis(): Long {
+        return Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-        }
-        val startOfDay = calendar.timeInMillis
+        }.timeInMillis
+    }
+
+    private suspend fun getTodaySummary(): Pair<Long, Int> {
+        val startOfDay = todayStartMillis()
+        val now = System.currentTimeMillis()
+        val dailyPoints = repository.getUsageTotalsGroupedByDay(startOfDay, now + 1)
+        val screenTimeMillis = dailyPoints.sumOf { it.totalUsageMillis }
+        val unlocks = dailyPoints.sumOf { it.totalUnlockCount }
+        return screenTimeMillis to unlocks
+    }
+
+    private suspend fun getTodayUsage(): List<AppUsage> {
+        val startOfDay = todayStartMillis()
         val now = System.currentTimeMillis()
 
         val usageData = repository.getAppUsageSummaryInTimeRange(startOfDay, now)

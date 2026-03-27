@@ -107,6 +107,7 @@ fun UsageChartCard(
             when (metric) {
                 StatsMetric.ScreenTime -> point.totalUsageMillis.toDouble() / TimeUnit.MINUTES.toMillis(1).toDouble()
                 StatsMetric.Opens -> point.totalLaunchCount.toDouble()
+                StatsMetric.Unlocks -> point.totalUnlockCount.toDouble()
             }
         }
     }
@@ -158,6 +159,7 @@ fun UsageChartCard(
             when (metric) {
                 StatsMetric.ScreenTime -> formatMinutesLabel(value)
                 StatsMetric.Opens -> value.roundToInt().toString()
+                StatsMetric.Unlocks -> value.roundToInt().toString()
             }
         }
     }
@@ -174,6 +176,7 @@ fun UsageChartCard(
             val valueText = when (metric) {
                 StatsMetric.ScreenTime -> formatDuration(point.totalUsageMillis)
                 StatsMetric.Opens -> "${point.totalLaunchCount} opens"
+                StatsMetric.Unlocks -> "${point.totalUnlockCount} unlocks"
             }
             val timeLabel = point.markerTimeLabel(range, formatted)
             "$valueText – $timeLabel"

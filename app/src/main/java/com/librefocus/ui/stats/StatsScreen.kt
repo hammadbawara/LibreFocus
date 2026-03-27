@@ -94,28 +94,80 @@ fun StatsScreen(
             ) {
 
                 item {
-                    // Display only unlocks in summary - screen time now shown above chart
-                    if (uiState.totalUnlocks > 0) {
-                        SummaryCard(
-                            title = stringResource(id = R.string.stats_total_unlocks_title),
-                            value = uiState.totalUnlocks.toString()
+                    StatsMetricSelector(
+                        selectedMetric = metric,
+                        onMetricSelected = viewModel::onMetricSelected
+                    )
+                }
+
+                item {
+                    StatsRangeSelector(
+                        selectedRange = range,
+                        onSelected = { selected ->
+                            when (selected) {
+                                StatsRange.Custom -> showCustomRangePicker = true
+                                else -> viewModel.onRangeSelected(selected)
+                            }
+                        }
+                    )
+                }
+
+                item {
+                    // Consume pre-calculated display values from ViewModel state
+                    StatsTotalAndAverage(
+                        totalValue = uiState.totalDisplayValue,
+                        totalLabel = uiState.totalDisplayLabel,
+                        averageValue = uiState.averageDisplayValue,
+                        averageLabel = uiState.averageDisplayLabel
+                    )
+                }
+
+                item {
+                    StatsPeriodNavigator(
+                        label = period.label,
+                        onPrevious = viewModel::onNavigatePrevious,
+                        onNext = viewModel::onNavigateNext,
+                        isNextEnabled = true
+                    )
+                }
+
+                item {
+                    UsageChartCard(
+                        usagePoints = uiState.usagePoints,
+                        metric = metric,
+                        range = range,
+                        formatted = formattedPrefs
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                item {
+                    uiState.phaseOneInsights?.let { insights ->
+                        PhaseOneInsightsSection(
+                            insights = insights,
+                            selectedMetric = metric,
+                            formatted = formattedPrefs
                         )
                     }
                 }
 
                 item {
-                    StatsContent(
-                        uiState = statsContentUiState,
-                        range = range,
-                        metric = metric,
-                        period = period,
-                        formattedPrefs = formattedPref,
-                        onMetricSelected = statsContentViewModel::onMetricSelected,
-                        onRangeSelected = statsContentViewModel::onRangeSelected,
-                        onNavigateNext = statsContentViewModel::onNavigateNext,
-                        onNavigatePrevious = statsContentViewModel::onNavigatePrevious,
-                        onCustomRangeSelected = statsContentViewModel::onCustomRangeSelected,
-                    )
+                    uiState.phaseTwoInsights?.let { insights ->
+                        PhaseTwoInsightsSection(insights = insights)
+                    }
+                }
+
+                item {
+                    uiState.phaseThreeInsights?.let { insights ->
+                        PhaseThreeInsightsSection(insights = insights, range = range)
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
 
                 item {
