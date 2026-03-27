@@ -53,11 +53,16 @@ com/librefocus/
 │   │   └── UsageStatsProvider.kt    # System UsageStatsManager wrapper
 │   └── repository/
 │       ├── PreferencesRepository.kt
-│       └── UsageTrackingRepository.kt
+│       ├── UsageTrackingRepository.kt
+│       ├── BackupRestoreRepository.kt  # Backup/restore operations
+│       ├── CategoryRepository.kt
+│       ├── LimitRepository.kt
+│       └── AppRepository.kt
 ├── di/
 │   ├── AppModule.kt                 # ViewModels DI module
 │   ├── DatastoreModule.kt           # DataStore & DateTimeFormatterManager DI
 │   ├── DatabaseModule.kt            # Room database DI module
+│   ├── ChatbotModule.kt             # AI Chatbot DI module
 │   └── WorkerModule.kt              # WorkManager DI module
 ├── models/
 │   ├── AppUsage.kt
@@ -66,6 +71,7 @@ com/librefocus/
 │   ├── HourlyUsageData.kt
 │   ├── UsageValuePoint.kt
 │   ├── UsageEventData.kt
+│   ├── BackupData.kt                # Backup data models
 │   └── DateTimePreferences.kt       # Date/Time settings model
 ├── utils/
 │   ├── TimeUtils.kt
@@ -102,6 +108,12 @@ com/librefocus/
     ├── settings/
     │   ├── SettingsScreen.kt        # Settings UI with date/time config
     │   └── SettingsViewModel.kt     # Settings state management
+    ├── chatbot/
+    │   ├── ChatbotActivity.kt       # AI chatbot screen
+    │   ├── ChatViewModel.kt         # Chat logic with Groq API
+    │   └── ChatContextProvider.kt   # Provides usage context to chatbot
+    ├── components/
+    │   └── FloatingChatButton.kt    # Global FAB for chatbot access
     ├── limits/
     │   └── LimitsScreen.kt          # App limits UI (placeholder)
     └── theme/
@@ -156,6 +168,22 @@ com/librefocus/
   - [x] Centralized DateTimeFormatterManager
   - [x] Reactive formatting with cached formatters
   - [x] App-wide UI refactored to use centralized formatting
+- [x] **Backup & Restore System**
+  - [x] Complete database backup to compressed ZIP files
+  - [x] Backup includes all 9 database tables (categories, apps, usage, limits, etc.)
+  - [x] Compact JSON format to minimize file size
+  - [x] Export via system document picker
+  - [x] Two-step confirmation for data restoration
+  - [x] Complete data replacement strategy (delete all → import new)
+  - [x] Reset all database data with two-step verification
+  - [x] Integrated into Settings screen
+- [x] **AI Chatbot Assistant**
+  - [x] Context-aware AI chatbot using Groq API
+  - [x] Real-time usage data integration (screen time, top apps)
+  - [x] Llama 3.3 70B model for intelligent responses
+  - [x] Floating action button for quick access
+  - [x] Full-screen chat interface with message history
+  - [x] Provides personalized advice based on user behavior
 
 ### 🚧 In Progress / To Be Implemented
 
@@ -177,9 +205,10 @@ com/librefocus/
   - [ ] Usage trends and heatmaps
   - [ ] Category-based statistics
   
-- [ ] **App Categorization**
+- [x] **App Categorization**
   - [x] Auto-categorization logic
   - [x] Custom category CRUD operations
+  - [x] Category management UI
   - [ ] Category-based insights UI
   
 - [ ] **Prevention Tools**
@@ -196,23 +225,27 @@ com/librefocus/
   - [ ] Weekly/monthly goals
   - [ ] Progress visualization
   
-- [ ] **AI & Motivation**
-  - [ ] Personalized motivational messages
+- [x] **AI & Motivation**
+  - [x] AI chatbot assistant with context awareness
+  - [x] Real-time behavior analysis
+  - [x] Personalized advice and guidance
   - [ ] AI-driven automation (focus mode triggers)
   - [ ] Alternative app suggestions
   
-- [ ] **Security & Persistence**
+- [x] **Security & Persistence**
+  - [x] Complete backup & restore functionality
+  - [x] Database reset with verification
   - [ ] Anti-uninstall protection
-  - [ ] Backup & restore functionality
 
 #### 3. UI/UX Improvements
 - [x] ~~Complete insights/analytics screens~~
 - [x] ~~Settings screen with theme and date/time configuration~~
 - [x] Common AppScaffold component for UI consistency across screens
-- [ ] App categorization management UI
+- [x] App categorization management UI
+- [x] Data management UI (backup/restore/reset)
+- [x] AI chatbot interface with floating action button
 - [ ] Gamification dashboard
 - [ ] Prevention tools settings
-- [ ] AI/motivation screens
 - [ ] Enhanced data visualization (heatmaps, trends)
 
 #### 4. Background Services
@@ -323,6 +356,13 @@ com/librefocus/
   - Handles incremental sync using SyncMetadata
   - Calculates total usage time, launches, unlocks per app
 
+- **BackupRestoreRepository.kt** - Handles backup, restore, and reset operations
+  - createBackup(): Exports all 9 database tables to BackupData model
+  - exportBackup(uri, data): Writes compressed ZIP file with compact JSON
+  - importBackup(uri): Reads and parses backup ZIP file
+  - restoreBackup(data): Deletes all data and imports backup (complete replacement)
+  - resetAllData(): Clears all database tables
+
 ### Models
 - **DateTimePreferences.kt** - Immutable data model for date/time settings
   - Properties: useSystemDefaults, timeFormat, dateFormat, timeZoneId
@@ -351,6 +391,28 @@ com/librefocus/
 - **UsageSyncScheduler.kt** - WorkManager scheduling helper
   - schedulePeriodicSync(): Sets up background usage sync
 
+### AI Chatbot
+- **ChatViewModel.kt** - Manages chatbot conversation and API integration
+  - Uses Groq API with Llama 3.3 70B model
+  - Maintains message history with StateFlow
+  - Handles JSON response parsing with fallback strategies
+  - Default model: "llama-3.3-70b-versatile"
+
+- **ChatContextProvider.kt** - Provides real-time user behavior context to chatbot
+  - Fetches today's screen time from HourlyAppUsageDao
+  - Retrieves top 3 apps and daily unlock count
+  - Generates formatted context string for AI prompts
+  - Interface: IChatContextProvider for testability
+
+- **ChatbotActivity.kt / ChatbotScreen** - Full-screen chat interface
+  - Message list with user/assistant distinction
+  - Text input with send button
+  - Navigation integration
+
+- **FloatingChatButton.kt** - Global FAB for chatbot access
+  - Appears on all main screens except chatbot itself
+  - Quick access to AI assistant
+
 ### Background Processing
 - **UsageSyncWorker.kt** - WorkManager worker for periodic usage sync
   - Runs every 15 minutes (configurable)
@@ -367,7 +429,12 @@ com/librefocus/
   - **Important**: DateTimeFormatterManager registered as singleton with Context dependency
   
 - **DatabaseModule.kt** - Room database and DAOs
-  - Provides: UsageDatabase instance, all DAOs
+  - Provides: UsageDatabase instance, all DAOs, BackupRestoreRepository
+  
+- **ChatbotModule.kt** - AI chatbot dependencies
+  - Provides: IChatContextProvider implementation (ChatContextProvider)
+  - Factory: ChatViewModel with injected context provider
+  - Model configuration: llama-3.3-70b-versatile
   
 - **WorkerModule.kt** - WorkManager dependencies
   - Provides: UsageSyncScheduler, UsageStatsProvider, UsageTrackingRepository
@@ -385,11 +452,18 @@ com/librefocus/
   - Observes formattedPreferences StateFlow
   - Passes FormattedDateTimePreferences to chart components
   
-- **SettingsScreen.kt** - Settings UI with two sections:
+- **SettingsScreen.kt** - Settings UI with multiple sections:
   - Appearance: App Theme selection (SYSTEM/LIGHT/DARK)
+  - App Management: Category management navigation
+  - Data Management: Backup/Restore/Reset operations with two-step confirmations
   - Date & Time: useSystemDefaults toggle, time format, date format, time zone, live preview card
+  - About: App version and GitHub link
   
-- **LimitsScreen.kt** - Placeholder for app limits feature
+- **ChatbotActivity.kt** - AI chatbot interface
+  - Full-screen chat with message history
+  - Context-aware responses based on usage data
+  
+- **LimitsScreen.kt** - App limits feature (implemented)
 - **AppIntroScreen.kt, PermissionScreen.kt** - Onboarding screens
 
 #### ViewModels
@@ -399,10 +473,19 @@ com/librefocus/
   - Methods: onNavigatePrevious(), onNavigateNext(), onPeriodChange(), refreshData()
   - Uses FormattedDateTimePreferences for all date/time formatting
   
-- **SettingsViewModel.kt** - **MERGED** Manages both theme and date/time settings
-  - Exposes: appTheme, dateTimePreferences, formattedPreferences StateFlows
-  - Methods: setAppTheme(), setUseSystemDefaults(), setTimeFormat(), setDateFormat(), setTimeZone()
+- **SettingsViewModel.kt** - Manages theme, date/time, and backup settings
+  - Exposes: appTheme, dateTimePreferences, formattedPreferences, backupState StateFlows
+  - Theme methods: setAppTheme()
+  - Date/Time methods: setUseSystemDefaults(), setTimeFormat(), setDateFormat(), setTimeZone()
+  - Backup methods: createAndExportBackup(uri), importAndRestoreBackup(uri), resetAllData(), clearBackupState()
   - getAvailableTimeZones(): Returns grouped timezone list for picker
+  - BackupState sealed class: Idle, InProgress(message), Success(message), Error(message)
+  
+- **ChatViewModel.kt** - Manages AI chatbot conversation
+  - Maintains messages StateFlow with user and assistant messages
+  - sendMessage(text): Sends user message and gets AI response
+  - Uses Groq API with Ktor HTTP client
+  - Includes system prompt with user behavior context
   
 - **HomeViewModel.kt** - Home screen state and sync operations
 - **OnboardingViewModel.kt** - Onboarding flow state
@@ -605,24 +688,26 @@ When generating code:
 2. ✅ Usage stats collection
 3. ✅ Basic insights visualization
 4. ✅ Date/time settings system
-5. 🚧 App categorization
+5. ✅ App categorization
+6. ✅ Backup & restore
 
-### Phase 3: Prevention Tools
+### Phase 3: AI & User Engagement
+1. ✅ AI chatbot assistant
+2. Prevention tools (app blocking, focus mode)
+3. Gamification system
+4. Advanced analytics (trends, heatmaps)
+
+### Phase 4: Prevention & Control
 1. App blocking mechanism
-2. Focus mode
+2. Focus mode with timers
 3. Grayscale mode
-4. Wait time feature
-
-### Phase 4: Engagement
-1. Gamification system
-2. Badges and streaks
-3. Progress tracking
-4. Motivational messages
+4. Wait time before app launch
+5. Shorts/Reels time limits
 
 ### Phase 5: Advanced Features
-1. AI personalization
-2. Shorts/Reels tracking
-3. Backup & restore
+1. Gamification (badges, streaks, points)
+2. AI-driven automation
+3. Usage trends and heatmaps
 4. Anti-uninstall protection
 
 ---
