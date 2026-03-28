@@ -2,9 +2,11 @@ package com.librefocus.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -75,6 +77,23 @@ enum class Screen(
         }
     ),
 
+    Gamification(
+        route = "gamification",
+        label = "Gaming",
+        selectedIcon = {
+            Icon(
+                imageVector = Icons.Filled.EmojiEvents,
+                contentDescription = null
+            )
+        },
+        unselectedIcon = {
+            Icon(
+                imageVector = Icons.Outlined.EmojiEvents,
+                contentDescription = null
+            )
+        }
+    ),
+
     Settings (
         route = "settings",
         label = "Settings",
@@ -115,4 +134,12 @@ object AppDetailRoute {
         val encodedName = URLEncoder.encode(appName, StandardCharsets.UTF_8.toString())
         return "app_detail/$encodedPackage/$encodedName"
     }
+}
+
+object BadgesRoute {
+    const val ROUTE = "badges"
+}
+
+object LeaderboardRoute {
+    const val ROUTE = "leaderboard"
 }

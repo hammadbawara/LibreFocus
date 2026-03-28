@@ -14,6 +14,9 @@ import androidx.navigation.navArgument
 import com.librefocus.ui.categories.CategoryScreen
 import com.librefocus.ui.chatbot.ChatbotScreen
 import com.librefocus.ui.components.FloatingChatButton
+import com.librefocus.ui.gamification.BadgesScreen
+import com.librefocus.ui.gamification.GamificationScreen
+import com.librefocus.ui.gamification.LeaderboardScreen
 import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.CreateLimitScreen
 import com.librefocus.ui.limits.LaunchCountLimitScreen
@@ -59,6 +62,15 @@ fun NavGraph() {
                     navController = navController,
                     currentRoute = currentRoute
                 )
+            }
+            composable(Screen.Gamification.route) {
+                GamificationScreen()
+            }
+            composable(BadgesRoute.ROUTE) {
+                BadgesScreen()
+            }
+            composable(LeaderboardRoute.ROUTE) {
+                LeaderboardScreen()
             }
             composable("create_limit") {
                 val savedStateHandle = it.savedStateHandle
