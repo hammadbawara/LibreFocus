@@ -79,7 +79,7 @@ enum class Screen(
 
     Gamification(
         route = "gamification",
-        label = "Gaming",
+        label = "Quest",
         selectedIcon = {
             Icon(
                 imageVector = Icons.Filled.EmojiEvents,
