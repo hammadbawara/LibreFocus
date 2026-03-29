@@ -167,13 +167,12 @@ class UsageStatsProvider(
         for ((component, startTime) in activeComponents) {
             if (startTime == null) continue
 
-            val isStillInForeground = foregroundProcesses.any { it.contains(component.packageName) }
-            if (isStillInForeground) {
-                val sessionEndTime = minOf(System.currentTimeMillis(), endTimeMillis)
-                foregroundSessions.add(
-                    AppForegroundSession(component.packageName, startTime, sessionEndTime)
-                )
-            }
+            // Because ActivityManager can no longer observe other apps' processes on recent Android versions,
+            // we confidently assume the session extends to the query end.
+            val sessionEndTime = minOf(System.currentTimeMillis(), endTimeMillis)
+            foregroundSessions.add(
+                AppForegroundSession(component.packageName, startTime, sessionEndTime)
+            )
         }
 
         // Handle edge case: apps in foreground but no events found
