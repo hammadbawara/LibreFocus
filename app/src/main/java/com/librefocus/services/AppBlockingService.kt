@@ -68,10 +68,21 @@ class AppBlockingService : AccessibilityService(), KoinComponent {
 
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val packageName = event.packageName?.toString()
+            val className = event.className?.toString()
+
             if (packageName != null) {
-                // Ignore our own app or System UI to prevent endless blocked loops
-                if (packageName == this.packageName || packageName == "com.android.systemui" || packageName == "android") {
-                    overlayManager?.hide()
+                // Ignore System UI (notifications, volume panel, etc) so overlay stays active
+                if (packageName == "com.android.systemui" || packageName == "android") {
+                    return
+                }
+
+                if (packageName == this.packageName) {
+                    // If the user actually launched the main app, process it (which hides the overlay).
+                    // If it's just the overlay being drawn (e.g., FrameLayout or ComposeView), ignore it.
+                    if (className?.contains("MainActivity") == true) {
+                        currentForegroundPackage = packageName
+                        serviceScope.launch { checkCurrentAppOverLimit() }
+                    }
                     return
                 }
                 
@@ -208,8 +219,6 @@ class AppBlockingService : AccessibilityService(), KoinComponent {
                 unblockTimeMessage = unblockMessage,
                 scheduleInformation = scheduleInfo
             )
-            // Immediately navigate away to simulate app closing
-            performGlobalAction(GLOBAL_ACTION_HOME)
         }
     }
 
