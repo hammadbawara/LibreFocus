@@ -139,8 +139,8 @@ class AppBlockingService : AccessibilityService(), KoinComponent {
         val currentTimeInMinutes = currentHour * 60 + currentMinute
 
         for (slot in limit.timeSlots) {
-            val fromTimeInMinutes = slot.fromHour * 60
-            val toTimeInMinutes = slot.toHour * 60
+            val fromTimeInMinutes = slot.fromHour
+            val toTimeInMinutes = slot.toHour
 
             if (fromTimeInMinutes <= toTimeInMinutes) {
                 // Same day range (e.g. 09:00 -> 17:00)
