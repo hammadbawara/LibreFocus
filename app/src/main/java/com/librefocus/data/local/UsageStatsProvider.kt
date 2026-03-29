@@ -245,4 +245,24 @@ class UsageStatsProvider(
 
         return aggregatedData
     }
+
+    /**
+     * Calculates the total foreground usage time for a specific app within the given time range.
+     * This uses the same robust session extraction logic to ensure accuracy.
+     * 
+     * @param packageName The package name of the app to query
+     * @param startTimeMillis The start time in milliseconds
+     * @param endTimeMillis The end time in milliseconds
+     * @return Total usage time in milliseconds
+     */
+    fun getAppUsageSince(
+        packageName: String,
+        startTimeMillis: Long,
+        endTimeMillis: Long
+    ): Long {
+        val sessions = extractAppForegroundSessions(startTimeMillis, endTimeMillis)
+        return sessions
+            .filter { it.packageName == packageName }
+            .sumOf { it.sessionEndTimeMillis - it.sessionStartTimeMillis }
+    }
 }
