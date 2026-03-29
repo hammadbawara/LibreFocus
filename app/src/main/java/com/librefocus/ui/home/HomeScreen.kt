@@ -32,6 +32,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +49,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.librefocus.models.AppUsage
 import com.librefocus.ui.stats.formatDuration
 import org.koin.androidx.compose.koinViewModel
@@ -83,8 +85,7 @@ fun HomeScreen(
                             )
                         }
                     }
-                },
-                scrollBehavior = scrollBehavior
+                }
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)

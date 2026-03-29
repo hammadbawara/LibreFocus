@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.librefocus.data.repository.UsageTrackingRepository
 import com.librefocus.models.AppUsageData
+import com.librefocus.models.UsageValuePoint
 import com.librefocus.utils.DateTimeFormatterManager
+import com.librefocus.utils.FormattedDateTimePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -32,7 +35,11 @@ class StatsViewModel(
     private var _uiState = MutableStateFlow(StatsUiState())
     val uiState: StateFlow<StatsUiState> = _uiState
 
-    suspend fun refreshUsageStats(period: StatsPeriodState) {
+    val formattedPreferences: StateFlow<FormattedDateTimePreferences?> =
+        dateTimeFormatterManager.formattedPreferences
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    suspend fun refreshUsageStats(period: StatsPeriodState, metric: StatsMetric = StatsMetric.ScreenTime, range: StatsRange = StatsRange.Day) {
         viewModelScope.launch {
             _uiState.update {it.copy(isLoading = true)}
 
@@ -51,7 +58,10 @@ class StatsViewModel(
                     startUtc = period.startUtc,
                     endUtc = period.endUtc
                 )
-                
+
+                val usagePointsLocal = convertUsagePointsToLocal(usagePointsByDay)
+                val filledUsagePoints = fillMissingUsagePoints(usagePointsLocal, period, range)
+
                 val totalUsageMillis = filledUsagePoints.sumOf { it.totalUsageMillis }
                 val totalUnlocks = usageRepository.getDailyUnlockSummary(
                     startUtc = period.startUtc,
@@ -73,7 +83,7 @@ class StatsViewModel(
 
                 val phaseThreeInsights = buildPhaseThreeInsights(
                     period = period,
-                    range = _range.value
+                    range = range
                 )
 
                 val activeUsageBuckets = filledUsagePoints.count { it.totalUsageMillis > 0 }
@@ -83,14 +93,11 @@ class StatsViewModel(
                     0L
                 }
                 
-                val selectedLabel = when (_range.value) {
-                    StatsRange.Custom -> customRange?.label ?: period.label
-                    else -> period.label
-                }
-                
+                val selectedLabel = period.label
+
                 // Calculate total and average using utility functions
                 val totalValue = calculateTotal(filledUsagePoints, metric)
-                val averageValue = calculateAverage(filledUsagePoints, metric, _range.value)
+                val averageValue = calculateAverage(filledUsagePoints, metric, range)
                 
                 val totalDisplayValue = when (metric) {
                     StatsMetric.ScreenTime -> formatDuration(totalValue)
@@ -105,7 +112,7 @@ class StatsViewModel(
                 }
                 
                 val totalDisplayLabel = formatTotalLabel(metric)
-                val averageDisplayLabel = formatAverageLabel(_range.value, metric)
+                val averageDisplayLabel = formatAverageLabel(range, metric)
                 
                 StatsUiState(
                     totalUnlocks = totalUnlocks,

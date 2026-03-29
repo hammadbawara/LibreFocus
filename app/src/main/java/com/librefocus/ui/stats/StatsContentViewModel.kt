@@ -17,18 +17,6 @@ import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
-enum class StatsMetric {
-    ScreenTime,
-    Opens
-}
-
-enum class StatsRange {
-    Day,
-    Week,
-    Month,
-    Custom
-}
-
 data class StatsContentUiState(
     val selectedRangeLabel: String = "Today",
     val totalUsageMillis: Long = 0L,
@@ -290,11 +278,13 @@ open class StatsContentViewModel(
                 val totalDisplayValue = when (metric) {
                     StatsMetric.ScreenTime -> formatDuration(totalValue)
                     StatsMetric.Opens -> totalValue.toString()
+                    StatsMetric.Unlocks -> totalValue.toString()
                 }
 
                 val averageDisplayValue = when (metric) {
                     StatsMetric.ScreenTime -> formatDuration(averageValue)
                     StatsMetric.Opens -> averageValue.toString()
+                    StatsMetric.Unlocks -> averageValue.toString()
                 }
 
                 val totalDisplayLabel = formatTotalLabel(metric)

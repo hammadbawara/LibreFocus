@@ -2,8 +2,10 @@ package com.librefocus.ui.stats
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,7 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,12 +52,14 @@ fun StatsScreen(
     val formattedPref by statsContentViewModel.formattedPreferences.collectAsStateWithLifecycle()
     val statsContentUiState by statsContentViewModel.uiState.collectAsStateWithLifecycle()
 
+    var showCustomRangePicker by remember { mutableStateOf(false) }
+
     val isLoading by remember(uiState.isLoading, statsContentUiState.isLoading) {
         derivedStateOf { uiState.isLoading || statsContentUiState.isLoading }
     }
 
-    LaunchedEffect(period) {
-        viewModel.refreshUsageStats(period)
+    LaunchedEffect(period, metric, range) {
+        viewModel.refreshUsageStats(period, metric, range)
     }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -96,7 +102,7 @@ fun StatsScreen(
                 item {
                     StatsMetricSelector(
                         selectedMetric = metric,
-                        onMetricSelected = viewModel::onMetricSelected
+                        onMetricSelected = statsContentViewModel::onMetricSelected
                     )
                 }
 
@@ -106,7 +112,7 @@ fun StatsScreen(
                         onSelected = { selected ->
                             when (selected) {
                                 StatsRange.Custom -> showCustomRangePicker = true
-                                else -> viewModel.onRangeSelected(selected)
+                                else -> statsContentViewModel.onRangeSelected(selected)
                             }
                         }
                     )
@@ -125,8 +131,8 @@ fun StatsScreen(
                 item {
                     StatsPeriodNavigator(
                         label = period.label,
-                        onPrevious = viewModel::onNavigatePrevious,
-                        onNext = viewModel::onNavigateNext,
+                        onPrevious = statsContentViewModel::onNavigatePrevious,
+                        onNext = statsContentViewModel::onNavigateNext,
                         isNextEnabled = true
                     )
                 }
@@ -136,7 +142,7 @@ fun StatsScreen(
                         usagePoints = uiState.usagePoints,
                         metric = metric,
                         range = range,
-                        formatted = formattedPrefs
+                        formatted = formattedPref
                     )
                 }
 
@@ -149,7 +155,7 @@ fun StatsScreen(
                         PhaseOneInsightsSection(
                             insights = insights,
                             selectedMetric = metric,
-                            formatted = formattedPrefs
+                            formatted = formattedPref
                         )
                     }
                 }

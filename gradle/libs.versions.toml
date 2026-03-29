@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "8.12.0"
 composeCharts = "0.2.0"
 adaptive = "1.1.0"
 wheelpickercompose = "1.1.11"
