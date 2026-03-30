@@ -10,6 +10,10 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    plugins {
+        id("com.android.application") version "8.12.3" apply false
+        id("com.android.library") version "8.12.3" apply false
+    }
 }
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"

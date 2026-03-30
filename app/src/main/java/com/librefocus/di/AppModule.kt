@@ -3,6 +3,7 @@ package com.librefocus.di
 import com.librefocus.ui.MainViewModel
 import com.librefocus.ui.appselection.AppSelectionViewModel
 import com.librefocus.ui.categories.CategoryViewModel
+import com.librefocus.ui.gamification.GamificationViewModel
 import com.librefocus.ui.home.HomeViewModel
 import com.librefocus.ui.limits.CreateLimitViewModel
 import com.librefocus.ui.limits.LaunchCountLimitViewModel
@@ -87,3 +88,8 @@ val limitsModule = module {
     viewModelOf(::UsageLimitViewModel)
     viewModelOf(::LaunchCountLimitViewModel)
 }
+
+val gamificationModule = module {
+    viewModelOf(::GamificationViewModel)
+}
+

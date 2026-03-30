@@ -6,18 +6,28 @@ import androidx.room.TypeConverters
 import com.librefocus.data.local.database.converter.RoomTypeConverters
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
+import com.librefocus.data.local.database.dao.BadgeDao
+import com.librefocus.data.local.database.dao.ChallengeDao
 import com.librefocus.data.local.database.dao.DailyDeviceUsageDao
+import com.librefocus.data.local.database.dao.GamificationStatsDao
 import com.librefocus.data.local.database.dao.HourlyAppUsageDao
+import com.librefocus.data.local.database.dao.LeaderboardEntryDao
 import com.librefocus.data.local.database.dao.LimitDao
+import com.librefocus.data.local.database.dao.StreakDao
 import com.librefocus.data.local.database.dao.SyncMetadataDao
 import com.librefocus.data.local.database.dao.ChatMessageDao
 import com.librefocus.data.local.database.entity.AppCategoryEntity
 import com.librefocus.data.local.database.entity.AppEntity
+import com.librefocus.data.local.database.entity.BadgeEntity
+import com.librefocus.data.local.database.entity.ChallengeEntity
 import com.librefocus.data.local.database.entity.DailyDeviceUsageEntity
+import com.librefocus.data.local.database.entity.GamificationStatsEntity
 import com.librefocus.data.local.database.entity.HourlyAppUsageEntity
 import com.librefocus.data.local.database.entity.LaunchCountEntity
+import com.librefocus.data.local.database.entity.LeaderboardEntryEntity
 import com.librefocus.data.local.database.entity.LimitEntity
 import com.librefocus.data.local.database.entity.ScheduleLimitEntity
+import com.librefocus.data.local.database.entity.StreakEntity
 import com.librefocus.data.local.database.entity.SyncMetadataEntity
 import com.librefocus.data.local.database.entity.UsageLimitEntity
 import com.librefocus.data.local.database.entity.ChatMessageEntity
@@ -37,12 +47,14 @@ import com.librefocus.data.local.database.entity.ChatMessageEntity
         ScheduleLimitEntity::class,
         UsageLimitEntity::class,
         LaunchCountEntity::class,
-        ChatMessageEntity::class
+        GamificationStatsEntity::class,
+        BadgeEntity::class,
+        ChallengeEntity::class,
+        LeaderboardEntryEntity::class,
+        StreakEntity::class
     ],
     version = 4,
-    // Schema export disabled because a schema export directory is not configured for KSP.
-    // Set to true and configure `room.schemaLocation` in Gradle if you want exported schemas.
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(RoomTypeConverters::class)
 abstract class UsageDatabase : RoomDatabase() {
