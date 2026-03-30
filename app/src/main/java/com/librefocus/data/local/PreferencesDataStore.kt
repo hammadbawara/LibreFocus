@@ -20,7 +20,14 @@ class PreferencesDataStore(private val context: Context) {
     private val ONBOARDING_SHOWN_KEY = booleanPreferencesKey("onboarding_shown")
     private val APP_THEME_KEY = stringPreferencesKey("app_theme")
     private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
-    
+    private val LAST_CONVERSATION_KEY = stringPreferencesKey("last_conversation_id")
+    // Conversation title keys are stored as: conv_title_<conversationId>
+    private fun conversationTitleKey(id: String) = stringPreferencesKey("conv_title_$id")
+
+    // Conversation provider/model keys
+    private fun conversationProviderKey(id: String) = stringPreferencesKey("conv_provider_$id")
+    private fun conversationModelKey(id: String) = stringPreferencesKey("conv_model_$id")
+
     // Date & Time Preferences
     private val USE_SYSTEM_DATETIME_KEY = booleanPreferencesKey("use_system_datetime")
     private val DATE_FORMAT_KEY = stringPreferencesKey("date_format")
@@ -37,7 +44,53 @@ class PreferencesDataStore(private val context: Context) {
     val timeFormat: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[TIME_FORMAT_KEY] ?: "24H"
     }
-    
+
+    /** Flow exposing last saved conversation id (nullable) */
+    val lastConversationId: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[LAST_CONVERSATION_KEY]
+    }
+
+    suspend fun setLastConversationId(id: String?) {
+        context.dataStore.edit { prefs ->
+            if (id == null) prefs.remove(LAST_CONVERSATION_KEY) else prefs[LAST_CONVERSATION_KEY] = id
+        }
+    }
+
+    // Conversation title helpers
+    suspend fun setConversationTitle(conversationId: String, title: String?) {
+        context.dataStore.edit { prefs ->
+            val key = conversationTitleKey(conversationId)
+            if (title == null) prefs.remove(key) else prefs[key] = title
+        }
+    }
+
+    fun getConversationTitle(conversationId: String): Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[conversationTitleKey(conversationId)]
+    }
+
+    // Conversation provider/model helpers
+    suspend fun setConversationProvider(conversationId: String, provider: String?) {
+        context.dataStore.edit { prefs ->
+            val key = conversationProviderKey(conversationId)
+            if (provider == null) prefs.remove(key) else prefs[key] = provider
+        }
+    }
+
+    fun getConversationProvider(conversationId: String): Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[conversationProviderKey(conversationId)]
+    }
+
+    suspend fun setConversationModel(conversationId: String, model: String?) {
+        context.dataStore.edit { prefs ->
+            val key = conversationModelKey(conversationId)
+            if (model == null) prefs.remove(key) else prefs[key] = model
+        }
+    }
+
+    fun getConversationModel(conversationId: String): Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[conversationModelKey(conversationId)]
+    }
+
     /**
      * Provides a Flow of DateTimePreferences combining all date/time-related preferences.
      */

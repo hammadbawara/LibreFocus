@@ -16,6 +16,8 @@ import com.librefocus.ui.onboarding.OnboardingNavGraph
 import com.librefocus.ui.theme.LibreFocusTheme
 import com.librefocus.utils.UsageSyncScheduler
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.android.ext.android.get
+import com.librefocus.data.IApiKeyProvider
 
 class MainActivity() : ComponentActivity() {
     private val viewModel: MainViewModel by viewModel()
@@ -32,6 +34,9 @@ class MainActivity() : ComponentActivity() {
 
         // Schedule periodic usage sync when app starts
         UsageSyncScheduler.schedulePeriodicSync(this)
+
+        // Obtain ApiKeyProvider from Koin to pass down into NavGraph
+        val apiKeyProvider: IApiKeyProvider = get()
 
         setContent {
             val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
@@ -62,7 +67,7 @@ class MainActivity() : ComponentActivity() {
                     }
 
                     composable("home") {
-                        NavGraph()
+                        NavGraph(apiKeyProvider)
                     }
                 }
             }
