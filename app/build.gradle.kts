@@ -22,12 +22,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val properties = Properties()
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            properties.load(localPropertiesFile.inputStream())
-        }
-        buildConfigField("String", "GROQ_API_KEY", "\"${properties.getProperty("GROQ_API_KEY")}\"")
+        // GROQ_API_KEY is intentionally not injected at build time; keys are supplied by the user at runtime.
     }
 
     buildTypes {
@@ -111,6 +106,9 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // Jetpack Security (EncryptedSharedPreferences) for storing user API key
+    implementation("androidx.security:security-crypto:1.1.0")
 
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)

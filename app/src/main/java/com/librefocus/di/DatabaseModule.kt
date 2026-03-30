@@ -36,7 +36,8 @@ val databaseModule = module {
     single { get<UsageDatabase>().syncMetadataDao() }
     single { get<UsageDatabase>().dailyDeviceUsageDao() }
     single { get<UsageDatabase>().limitDao() }
-    
+    single { get<UsageDatabase>().chatMessageDao() }
+
     // UsageStatsManager
     single {
         get<Context>().getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
