@@ -28,16 +28,14 @@ import com.librefocus.ui.limits.UsageLimitScreen
 import com.librefocus.ui.settings.SettingsScreen
 import com.librefocus.ui.stats.AppDetailScreen
 import com.librefocus.ui.stats.StatsScreen
-import com.librefocus.data.IApiKeyProvider
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
 @Composable
-fun NavGraph(apiKeyProvider: IApiKeyProvider) {
+fun NavGraph() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-
 
     Box {
         NavHost(
@@ -227,30 +225,13 @@ fun NavGraph(apiKeyProvider: IApiKeyProvider) {
             composable(
                 route = "chatbot"
             ) {
-                ChatbotScreen(navController, apiKeyProvider = apiKeyProvider)
+                ChatbotScreen(navController)
             }
         }
 
 
-        // Routes that define their own FAB; chat FAB should be hidden on these routes to avoid overlap
-        val routesWithOwnFab = listOf(
-            Screen.Limits.route, // "limits"
-            "categories",
-            "create_limit",
-            "set_limit",
-            "schedule_limit",
-            "usage_limit",
-            "launch_count_limit",
-            Screen.Settings.route
-        )
 
-        // Only show the global chat FAB when we're not on the chatbot screen and the current route
-        // is known and does not already provide a FAB (so we don't render two overlapping FABs).
-        val shouldShowChatFab = currentRoute != null && currentRoute != "chatbot" && routesWithOwnFab.none { route ->
-            currentRoute == route || currentRoute.startsWith(route)
-        }
-
-        if (shouldShowChatFab) {
+        if (currentRoute != "chatbot") {
             FloatingChatButton(
                 navController
             )

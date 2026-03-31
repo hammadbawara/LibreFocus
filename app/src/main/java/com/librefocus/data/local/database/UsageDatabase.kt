@@ -15,7 +15,6 @@ import com.librefocus.data.local.database.dao.LeaderboardEntryDao
 import com.librefocus.data.local.database.dao.LimitDao
 import com.librefocus.data.local.database.dao.StreakDao
 import com.librefocus.data.local.database.dao.SyncMetadataDao
-import com.librefocus.data.local.database.dao.ChatMessageDao
 import com.librefocus.data.local.database.entity.AppCategoryEntity
 import com.librefocus.data.local.database.entity.AppEntity
 import com.librefocus.data.local.database.entity.BadgeEntity
@@ -30,7 +29,6 @@ import com.librefocus.data.local.database.entity.ScheduleLimitEntity
 import com.librefocus.data.local.database.entity.StreakEntity
 import com.librefocus.data.local.database.entity.SyncMetadataEntity
 import com.librefocus.data.local.database.entity.UsageLimitEntity
-import com.librefocus.data.local.database.entity.ChatMessageEntity
 
 /**
  * Main Room database for LibreFocus app.
@@ -70,9 +68,17 @@ abstract class UsageDatabase : RoomDatabase() {
     abstract fun dailyDeviceUsageDao(): DailyDeviceUsageDao
     
     abstract fun limitDao(): LimitDao
-
-    abstract fun chatMessageDao(): ChatMessageDao
-
+    
+    abstract fun gamificationStatsDao(): GamificationStatsDao
+    
+    abstract fun badgeDao(): BadgeDao
+    
+    abstract fun challengeDao(): ChallengeDao
+    
+    abstract fun leaderboardEntryDao(): LeaderboardEntryDao
+    
+    abstract fun streakDao(): StreakDao
+    
     companion object {
         const val DATABASE_NAME = "librefocus_usage_database"
     }

@@ -10,34 +10,7 @@ class PreferencesRepository(private val dataStore: PreferencesDataStore) {
     val onboardingShown: Flow<Boolean> = dataStore.onboardingShown
     val appTheme: Flow<String> = dataStore.appTheme
     val timeFormat: Flow<String> = dataStore.timeFormat
-
-    /** Flow that emits the last open conversation id (nullable) */
-    val lastConversationId: Flow<String?> = dataStore.lastConversationId
-
-    suspend fun setLastConversationId(id: String?) {
-        dataStore.setLastConversationId(id)
-    }
-
-    // Conversation title helpers
-    suspend fun setConversationTitle(conversationId: String, title: String?) {
-        dataStore.setConversationTitle(conversationId, title)
-    }
-
-    fun getConversationTitle(conversationId: String): Flow<String?> = dataStore.getConversationTitle(conversationId)
-
-    // Conversation provider/model helpers
-    suspend fun setConversationProvider(conversationId: String, provider: String?) {
-        dataStore.setConversationProvider(conversationId, provider)
-    }
-
-    fun getConversationProvider(conversationId: String): Flow<String?> = dataStore.getConversationProvider(conversationId)
-
-    suspend fun setConversationModel(conversationId: String, model: String?) {
-        dataStore.setConversationModel(conversationId, model)
-    }
-
-    fun getConversationModel(conversationId: String): Flow<String?> = dataStore.getConversationModel(conversationId)
-
+    
     /**
      * Provides a Flow of combined date/time preferences.
      */

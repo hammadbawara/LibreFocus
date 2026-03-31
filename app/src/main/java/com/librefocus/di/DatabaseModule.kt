@@ -43,8 +43,6 @@ val databaseModule = module {
     single { get<UsageDatabase>().leaderboardEntryDao() }
     single { get<UsageDatabase>().streakDao() }
     
-    single { get<UsageDatabase>().chatMessageDao() }
-
     // UsageStatsManager
     single {
         get<Context>().getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
