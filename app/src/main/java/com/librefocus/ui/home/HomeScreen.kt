@@ -76,6 +76,12 @@ fun HomeScreen(
                     heatmapData = state.heatmapData,
                     insights = state.insights
                 )
+                com.librefocus.ui.home.components.TrendsSection(
+                    dailyTrends = state.dailyTrends,
+                    topAppsUsage = state.topAppsUsage,
+                    screenTimeComparison = state.screenTimeComparison,
+                    unlocksComparison = state.unlocksComparison
+                )
             }
 
         }
