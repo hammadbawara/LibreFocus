@@ -18,3 +18,4 @@ temp/*
 gitignore/*
 .idea/studiobot.xml
 *.md
+.kotlin
