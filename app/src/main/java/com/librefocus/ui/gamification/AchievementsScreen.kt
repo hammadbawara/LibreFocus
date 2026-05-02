@@ -23,6 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssistantPhoto
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material3.AlertDialog
@@ -87,6 +90,18 @@ fun AchievementsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val achievementTypes = remember(uiState.achievementGroups) {
+        val achievementGroupsByType = uiState.achievementGroups.associateBy { it.type }
+
+        AchievementType.entries.sortedWith(
+            compareByDescending<AchievementType> { type ->
+                achievementGroupsByType[type]
+                    ?.achievements
+                    ?.maxOfOrNull { it.achievedAtUtc }
+                    ?: Long.MIN_VALUE
+            }.thenBy { it.ordinal }
+        )
+    }
 
     var showGoalDialog by rememberSaveable { mutableStateOf(false) }
     var goalInput by rememberSaveable { mutableStateOf("") }
@@ -213,7 +228,7 @@ fun AchievementsScreen(
                 }
 
                 items(
-                    items = AchievementType.entries,
+                    items = achievementTypes,
                     key = { it.name }
                 ) { achievementType ->
                     val group = uiState.achievementGroups.firstOrNull { it.type == achievementType }
@@ -261,6 +276,9 @@ fun AchievementDetailScreen(
     }
     val selectedGroupXp = selectedGroup?.totalXp ?: 0
     val selectedAwardXp = selectedType?.xpReward ?: 0
+    val achievementDates = remember(selectedGroup?.achievements) {
+        selectedGroup?.achievements.orEmpty().sortedByDescending { it.achievedAtUtc }
+    }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let { message ->
@@ -285,7 +303,6 @@ fun AchievementDetailScreen(
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { paddingValues ->
-        val achievementDates = selectedGroup?.achievements.orEmpty()
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 168.dp),
             modifier = Modifier
@@ -486,9 +503,24 @@ private fun SummarySection(
             MetricCard(label = singleMetricLabel, value = singleMetricValue)
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                MetricCard(label = "Current streak", value = currentStreak.toString(), modifier = Modifier.weight(1f))
-                MetricCard(label = "Longest streak", value = longestStreak.toString(), modifier = Modifier.weight(1f))
-                MetricCard(label = "Perfect days", value = totalPerfectDays.toString(), modifier = Modifier.weight(1f))
+                MetricCard(
+                    label = "Current streak",
+                    value = currentStreak.toString(),
+                    icon = Icons.Filled.LocalFireDepartment,
+                    modifier = Modifier.weight(1f)
+                )
+                MetricCard(
+                    label = "Longest streak",
+                    value = longestStreak.toString(),
+                    icon = Icons.Filled.EmojiEvents,
+                    modifier = Modifier.weight(1f)
+                )
+                MetricCard(
+                    label = "Perfect days",
+                    value = totalPerfectDays.toString(),
+                    icon = Icons.Filled.CheckCircle,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -653,6 +685,7 @@ private fun XpSummaryCard(
 private fun MetricCard(
     label: String,
     value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -665,11 +698,20 @@ private fun MetricCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
