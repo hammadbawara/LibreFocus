@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AssistantPhoto
+import androidx.compose.material.icons.filled.CalendarViewWeek
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -915,8 +917,14 @@ private fun GoalDialog(
 }
 
 private fun AchievementType.detailDescription(): String = when (this) {
+    AchievementType.PERFECT_WEEKEND -> "Stay under your goal on both Saturday and Sunday."
+    AchievementType.PERFECT_WEEKDAYS -> "Stay under your goal from Monday through Friday."
     AchievementType.PERFECT_WEEK -> "Stay within your goal for seven perfect days in a row."
     AchievementType.PERFECT_MONTH -> "Complete a full month without exceeding your screen time goal."
+    AchievementType.FIRST_STEP -> "Stay under your goal for 1 day for the first time."
+    AchievementType.DAILY_DISCIPLINE -> "Build a 3-day perfect streak."
+    AchievementType.UNBREAKABLE -> "Keep a 14-day perfect streak alive."
+    AchievementType.ZEN_MASTER -> "Reach a 30-day perfect streak."
     AchievementType.PERFECT_10 -> "Reach 10 perfect days overall."
     AchievementType.PERFECT_20 -> "Reach 20 perfect days overall."
     AchievementType.PERFECT_30 -> "Reach 30 perfect days overall."
@@ -927,11 +935,18 @@ private fun AchievementType.detailDescription(): String = when (this) {
     AchievementType.PERFECT_2000 -> "Reach 2,000 perfect days overall."
     AchievementType.PERFECT_3000 -> "Reach 3,000 perfect days overall."
     AchievementType.PERFECT_5000 -> "Reach 5,000 perfect days overall."
+    AchievementType.WEEKEND_WARRIOR -> "Earn three perfect weekends in a row."
 }
 
 private fun AchievementType.awardIcon() = when (this) {
+    AchievementType.PERFECT_WEEKEND -> Icons.Filled.CalendarViewWeek
+    AchievementType.PERFECT_WEEKDAYS -> Icons.Filled.Work
     AchievementType.PERFECT_WEEK -> Icons.Filled.EmojiEvents
     AchievementType.PERFECT_MONTH -> Icons.Filled.WorkspacePremium
+    AchievementType.FIRST_STEP -> Icons.Filled.CheckCircle
+    AchievementType.DAILY_DISCIPLINE -> Icons.Filled.ElectricBolt
+    AchievementType.UNBREAKABLE -> Icons.Filled.LocalFireDepartment
+    AchievementType.ZEN_MASTER -> Icons.Filled.AccessTime
     AchievementType.PERFECT_10 -> Icons.Filled.CheckCircle
     AchievementType.PERFECT_20 -> Icons.Filled.ElectricBolt
     AchievementType.PERFECT_30 -> Icons.Filled.LocalFireDepartment
@@ -942,6 +957,7 @@ private fun AchievementType.awardIcon() = when (this) {
     AchievementType.PERFECT_2000 -> Icons.Filled.EmojiEvents
     AchievementType.PERFECT_3000 -> Icons.Filled.WorkspacePremium
     AchievementType.PERFECT_5000 -> Icons.Filled.LocalFireDepartment
+    AchievementType.WEEKEND_WARRIOR -> Icons.Filled.EmojiEvents
 }
 
 private fun AchievementType.awardGradientColors(earned: Boolean): List<Color> = if (!earned) {
@@ -951,8 +967,14 @@ private fun AchievementType.awardGradientColors(earned: Boolean): List<Color> = 
     )
 } else {
     when (this) {
+        AchievementType.PERFECT_WEEKEND -> listOf(Color(0xFFFFB74D), Color(0xFFF57C00))
+        AchievementType.PERFECT_WEEKDAYS -> listOf(Color(0xFF4FC3F7), Color(0xFF0277BD))
         AchievementType.PERFECT_WEEK -> listOf(Color(0xFFFFD54F), Color(0xFFFF8F00))
         AchievementType.PERFECT_MONTH -> listOf(Color(0xFF81D4FA), Color(0xFF039BE5))
+        AchievementType.FIRST_STEP -> listOf(Color(0xFFA5D6A7), Color(0xFF2E7D32))
+        AchievementType.DAILY_DISCIPLINE -> listOf(Color(0xFF80CBC4), Color(0xFF00897B))
+        AchievementType.UNBREAKABLE -> listOf(Color(0xFFFFAB91), Color(0xFFE64A19))
+        AchievementType.ZEN_MASTER -> listOf(Color(0xFFB39DDB), Color(0xFF5E35B1))
         AchievementType.PERFECT_10 -> listOf(Color(0xFFA5D6A7), Color(0xFF2E7D32))
         AchievementType.PERFECT_20 -> listOf(Color(0xFFFFAB91), Color(0xFFE64A19))
         AchievementType.PERFECT_30 -> listOf(Color(0xFFE1BEE7), Color(0xFF8E24AA))
@@ -963,5 +985,6 @@ private fun AchievementType.awardGradientColors(earned: Boolean): List<Color> = 
         AchievementType.PERFECT_2000 -> listOf(Color(0xFFCE93D8), Color(0xFF6A1B9A))
         AchievementType.PERFECT_3000 -> listOf(Color(0xFFAED581), Color(0xFF558B2F))
         AchievementType.PERFECT_5000 -> listOf(Color(0xFFFFE082), Color(0xFFF9A825))
+        AchievementType.WEEKEND_WARRIOR -> listOf(Color(0xFFFFD54F), Color(0xFFFBC02D))
     }
 }

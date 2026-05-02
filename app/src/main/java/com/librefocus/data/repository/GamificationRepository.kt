@@ -17,7 +17,9 @@ import com.librefocus.utils.roundToDayStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneOffset
 
@@ -241,6 +243,12 @@ class GamificationRepository(
     ) {
         if (!isFinalized) return
 
+        insertCurrentStreakMilestoneIfNeeded(
+            dayUtc = dayUtc,
+            currentStreak = currentStreak,
+            nowUtc = nowUtc
+        )
+
         if (currentStreak > 0 && currentStreak % 7 == 0) {
             upsertAchievement(
                 type = AchievementType.PERFECT_WEEK,
@@ -249,6 +257,36 @@ class GamificationRepository(
                 occurrenceCount = currentStreak / 7,
                 thresholdValue = 7
             )
+        }
+
+        if (isFriday(dayUtc) && isPerfectWeekdayBlock(dayUtc)) {
+            upsertAchievement(
+                type = AchievementType.PERFECT_WEEKDAYS,
+                sourceDateUtc = dayUtc,
+                achievedAtUtc = nowUtc,
+                occurrenceCount = achievementDao.countAchievementsByType(AchievementType.PERFECT_WEEKDAYS.name) + 1,
+                thresholdValue = 5
+            )
+        }
+
+        if (isSunday(dayUtc) && isPerfectWeekend(dayUtc)) {
+            upsertAchievement(
+                type = AchievementType.PERFECT_WEEKEND,
+                sourceDateUtc = dayUtc,
+                achievedAtUtc = nowUtc,
+                occurrenceCount = achievementDao.countAchievementsByType(AchievementType.PERFECT_WEEKEND.name) + 1,
+                thresholdValue = 2
+            )
+
+            if (countConsecutivePerfectWeekends(dayUtc) == 3) {
+                insertSingleOccurrenceAchievement(
+                    type = AchievementType.WEEKEND_WARRIOR,
+                    sourceDateUtc = dayUtc,
+                    achievedAtUtc = nowUtc,
+                    occurrenceCount = 3,
+                    thresholdValue = 3
+                )
+            }
         }
 
         if (isMonthEnd(dayUtc)) {
@@ -279,6 +317,38 @@ class GamificationRepository(
         }
     }
 
+    private suspend fun insertCurrentStreakMilestoneIfNeeded(
+        dayUtc: Long,
+        currentStreak: Int,
+        nowUtc: Long
+    ) {
+        val milestoneType = AchievementType.currentStreakMilestone(currentStreak) ?: return
+        insertSingleOccurrenceAchievement(
+            type = milestoneType,
+            sourceDateUtc = dayUtc,
+            achievedAtUtc = nowUtc,
+            occurrenceCount = currentStreak,
+            thresholdValue = milestoneType.thresholdValue
+        )
+    }
+
+    private suspend fun insertSingleOccurrenceAchievement(
+        type: AchievementType,
+        sourceDateUtc: Long,
+        achievedAtUtc: Long,
+        occurrenceCount: Int,
+        thresholdValue: Int?
+    ) {
+        if (achievementDao.countAchievementsByType(type.name) > 0) return
+        upsertAchievement(
+            type = type,
+            sourceDateUtc = sourceDateUtc,
+            achievedAtUtc = achievedAtUtc,
+            occurrenceCount = occurrenceCount,
+            thresholdValue = thresholdValue
+        )
+    }
+
     private suspend fun upsertAchievement(
         type: AchievementType,
         sourceDateUtc: Long,
@@ -296,6 +366,47 @@ class GamificationRepository(
                 thresholdValue = thresholdValue
             )
         )
+    }
+
+    private suspend fun isPerfectWeekdayBlock(dayUtc: Long): Boolean {
+        val weekStartUtc = startOfWeek(dayUtc)
+        val nextWeekStartUtc = weekStartUtc + 5L * MILLIS_PER_DAY
+        return perfectDayDao.getPerfectDaysInRange(weekStartUtc, nextWeekStartUtc).size == 5
+    }
+
+    private suspend fun isPerfectWeekend(dayUtc: Long): Boolean {
+        val saturdayStartUtc = dayUtc - MILLIS_PER_DAY
+        val sundayEndUtc = dayUtc + MILLIS_PER_DAY
+        return perfectDayDao.getPerfectDaysInRange(saturdayStartUtc, sundayEndUtc).size == 2
+    }
+
+    private suspend fun countConsecutivePerfectWeekends(sundayUtc: Long): Int {
+        var weekendEndUtc = sundayUtc
+        var streak = 0
+
+        while (isPerfectWeekend(weekendEndUtc)) {
+            streak += 1
+            weekendEndUtc -= 7L * MILLIS_PER_DAY
+        }
+
+        return streak
+    }
+
+    private fun isFriday(dayUtc: Long): Boolean {
+        return utcDate(dayUtc).dayOfWeek == DayOfWeek.FRIDAY
+    }
+
+    private fun isSunday(dayUtc: Long): Boolean {
+        return utcDate(dayUtc).dayOfWeek == DayOfWeek.SUNDAY
+    }
+
+    private fun startOfWeek(dayUtc: Long): Long {
+        val monday = utcDate(dayUtc).with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        return monday.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+    }
+
+    private fun utcDate(dayUtc: Long): LocalDate {
+        return Instant.ofEpochMilli(dayUtc).atZone(ZoneOffset.UTC).toLocalDate()
     }
 
     private suspend fun loadGroupedAchievements(): List<AchievementGroup> {
