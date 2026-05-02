@@ -93,13 +93,17 @@ fun AchievementsScreen(
     var showGoalDialog by rememberSaveable { mutableStateOf(false) }
     var goalInput by rememberSaveable { mutableStateOf("") }
     var showGoalMenu by rememberSaveable { mutableStateOf(false) }
-    var hasAutoOpenedGoalDialog by rememberSaveable { mutableStateOf(false) }
+    var hasPromptedForMissingGoal by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.currentGoalMinutes) {
-        if (uiState.currentGoalMinutes <= 0 && !hasAutoOpenedGoalDialog) {
+    LaunchedEffect(uiState.isLoading, uiState.currentGoalMinutes) {
+        if (uiState.isLoading) return@LaunchedEffect
+
+        if (uiState.currentGoalMinutes > 0) {
+            hasPromptedForMissingGoal = false
+        } else if (!hasPromptedForMissingGoal) {
             goalInput = ""
             showGoalDialog = true
-            hasAutoOpenedGoalDialog = true
+            hasPromptedForMissingGoal = true
         }
     }
 
