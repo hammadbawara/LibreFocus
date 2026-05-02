@@ -294,7 +294,7 @@ fun AchievementDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                AchievementHeroCard(
+                InteractiveAchievementShowcase(
                     title = selectedType?.displayName ?: "Achievement",
                     subtitle = selectedType?.detailDescription().orEmpty(),
                     earned = selectedGroup != null,
@@ -555,12 +555,6 @@ private fun AchievementCard(
     onClick: () -> Unit
 ) {
     val earned = group != null
-    val hapticFeedback = LocalHapticFeedback.current
-    var rotationXTarget by remember(achievementType.name) { mutableFloatStateOf(0f) }
-    var rotationYTarget by remember(achievementType.name) { mutableFloatStateOf(0f) }
-    val rotationX by animateFloatAsState(targetValue = rotationXTarget, label = "achievementRotationX")
-    val rotationY by animateFloatAsState(targetValue = rotationYTarget, label = "achievementRotationY")
-    val scale by animateFloatAsState(targetValue = if (earned) 1f else 0.98f, label = "achievementScale")
     val cardShape = RoundedCornerShape(24.dp)
     val accentColors = achievementType.awardGradientColors(earned)
     val countLabel = when {
@@ -572,37 +566,7 @@ private fun AchievementCard(
     }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                this.rotationX = rotationX
-                this.rotationY = rotationY
-                this.scaleX = scale
-                this.scaleY = scale
-            }
-            .pointerInput(achievementType.name) {
-                detectDragGestures(
-                    onDragEnd = {
-                        rotationXTarget = 0f
-                        rotationYTarget = 0f
-                    },
-                    onDragCancel = {
-                        rotationXTarget = 0f
-                        rotationYTarget = 0f
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        rotationYTarget = (rotationYTarget + dragAmount.x * 0.35f).coerceIn(-14f, 14f)
-                        rotationXTarget = (rotationXTarget - dragAmount.y * 0.35f).coerceIn(-14f, 14f)
-                    }
-                )
-            }
-            .clickable(
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            ) {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onClick()
-            },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = cardShape,
         colors = CardDefaults.cardColors(
             containerColor = if (earned) {
@@ -656,6 +620,110 @@ private fun AchievementCard(
                     textAlign = TextAlign.Center
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun InteractiveAchievementShowcase(
+    title: String,
+    subtitle: String,
+    earned: Boolean,
+    achievementType: AchievementType?
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    var rotationXTarget by remember(achievementType?.name ?: title) { mutableFloatStateOf(0f) }
+    var rotationYTarget by remember(achievementType?.name ?: title) { mutableFloatStateOf(0f) }
+    val rotationX by animateFloatAsState(targetValue = rotationXTarget, label = "showcaseRotationX")
+    val rotationY by animateFloatAsState(targetValue = rotationYTarget, label = "showcaseRotationY")
+    val scale by animateFloatAsState(targetValue = if (earned) 1f else 0.98f, label = "showcaseScale")
+    val showcaseType = achievementType ?: AchievementType.PERFECT_10
+    val accentColors = showcaseType.awardGradientColors(earned)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                this.rotationX = rotationX
+                this.rotationY = rotationY
+                this.scaleX = scale
+                this.scaleY = scale
+            }
+            .pointerInput(achievementType?.name ?: title) {
+                detectDragGestures(
+                    onDragEnd = {
+                        rotationXTarget = 0f
+                        rotationYTarget = 0f
+                    },
+                    onDragCancel = {
+                        rotationXTarget = 0f
+                        rotationYTarget = 0f
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        rotationYTarget = (rotationYTarget + dragAmount.x * 0.45f).coerceIn(-18f, 18f)
+                        rotationXTarget = (rotationXTarget - dragAmount.y * 0.45f).coerceIn(-18f, 18f)
+                    }
+                )
+            }
+            .clickable {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            },
+        shape = RoundedCornerShape(30.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (earned) {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            }
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = if (earned) {
+                            accentColors + MaterialTheme.colorScheme.surface.copy(alpha = 0.12f)
+                        } else {
+                            listOf(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+                                MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        }
+                    )
+                )
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            MedalIcon(
+                achievementType = showcaseType,
+                earned = earned,
+                modifier = Modifier.size(180.dp)
+            )
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                color = if (earned) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (earned) {
+                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.88f)
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
