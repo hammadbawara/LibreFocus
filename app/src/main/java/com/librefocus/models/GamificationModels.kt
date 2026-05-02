@@ -102,6 +102,7 @@ data class GamificationSnapshot(
     val longestStreak: Int,
     val totalPerfectDays: Int,
     val totalXp: Int,
+    val todayXp: Int,
     val levelProgress: LevelProgress,
     val achievementGroups: List<AchievementGroup>,
     val latestAchievementAnnouncement: AchievementAnnouncement? = null

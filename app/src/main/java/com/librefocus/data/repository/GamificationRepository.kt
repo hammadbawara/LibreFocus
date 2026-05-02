@@ -186,6 +186,9 @@ class GamificationRepository(
             val achievementGroups = loadGroupedAchievements()
             val achievementRecords = achievementGroups.flatMap { it.achievements }
             val totalXp = achievementRecords.sumOf { it.xpEarned }
+            val todayXp = achievementRecords
+                .filter { roundToDayStart(it.achievedAtUtc) == todayStartUtc }
+                .sumOf { it.xpEarned }
             val levelProgress = calculateLevelProgress(totalXp)
             val latestAnnouncement = achievementRecords
                 .filter { it.achievedAtUtc > lastSeenAchievementAtUtc }
@@ -213,6 +216,7 @@ class GamificationRepository(
                     longestStreak = longestStreakSnapshot,
                     totalPerfectDays = totalPerfectDaysSnapshot,
                     totalXp = totalXp,
+                    todayXp = todayXp,
                     levelProgress = levelProgress,
                     achievementGroups = achievementGroups,
                     latestAchievementAnnouncement = latestAnnouncement

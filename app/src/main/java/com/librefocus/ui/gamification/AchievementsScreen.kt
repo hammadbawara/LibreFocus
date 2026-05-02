@@ -59,10 +59,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -70,7 +73,6 @@ import com.librefocus.models.AchievementGroup
 import com.librefocus.models.AchievementType
 import com.librefocus.models.totalXp
 import com.librefocus.models.xpEarned
-import com.librefocus.ui.common.AppBottomNavigationBar
 import com.librefocus.ui.common.AppScaffold
 import com.librefocus.ui.common.AppTopAppBar
 import com.librefocus.ui.navigation.AchievementDetailRoute
@@ -147,13 +149,6 @@ fun AchievementsScreen(
                 scrollBehavior = scrollBehavior
             )
         },
-        bottomBar = { scrollBehavior ->
-            AppBottomNavigationBar(
-                navController = navController,
-                currentRoute = currentRoute,
-                scrollBehavior = scrollBehavior
-            )
-        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         LazyVerticalGrid(
@@ -168,7 +163,7 @@ fun AchievementsScreen(
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 AchievementHeroCard(
-                    title = "Your progress",
+                    title = "Achievement journey",
                     subtitle = if (uiState.currentGoalMinutes > 0) {
                         "Daily goal: ${uiState.currentGoalMinutes} min"
                     } else {
@@ -188,14 +183,24 @@ fun AchievementsScreen(
                 }
             } else {
                 item(span = { GridItemSpan(maxLineSpan) }) {
+                    LevelProgressCard(
+                        level = uiState.level,
+                        totalXp = uiState.totalXp,
+                        todayXp = uiState.todayXp,
+                        xpIntoCurrentLevel = uiState.xpIntoCurrentLevel,
+                        xpForNextLevel = uiState.xpForNextLevel,
+                        xpToNextLevel = uiState.xpToNextLevel
+                    )
+                }
+
+                item (span = { GridItemSpan(maxLineSpan) }){
                     SummarySection(
                         currentStreak = uiState.currentStreak,
                         longestStreak = uiState.longestStreak,
                         totalPerfectDays = uiState.totalPerfectDays,
-                        totalXp = uiState.totalXp,
-                        level = uiState.level
                     )
                 }
+
 
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     SectionHeader(title = "Achievements")
@@ -279,13 +284,6 @@ fun AchievementDetailScreen(
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        bottomBar = { scrollBehavior ->
-            AppBottomNavigationBar(
-                navController = androidx.navigation.compose.rememberNavController(),
-                currentRoute = null,
-                scrollBehavior = scrollBehavior
-            )
-        }
     ) { paddingValues ->
         val achievementDates = selectedGroup?.achievements.orEmpty()
         LazyVerticalGrid(
@@ -481,8 +479,6 @@ private fun SummarySection(
     totalPerfectDays: Int,
     singleMetricLabel: String? = null,
     singleMetricValue: String? = null,
-    totalXp: Int? = null,
-    level: Int? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(title = if (singleMetricLabel == null) "Summary" else singleMetricLabel)
@@ -494,12 +490,107 @@ private fun SummarySection(
                 MetricCard(label = "Longest streak", value = longestStreak.toString(), modifier = Modifier.weight(1f))
                 MetricCard(label = "Perfect days", value = totalPerfectDays.toString(), modifier = Modifier.weight(1f))
             }
-            if (totalXp != null && level != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    MetricCard(label = "Level", value = level.toString(), modifier = Modifier.weight(1f))
-                    MetricCard(label = "XP", value = totalXp.toString(), modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun LevelProgressCard(
+    level: Int,
+    totalXp: Int,
+    todayXp: Int,
+    xpIntoCurrentLevel: Int,
+    xpForNextLevel: Int,
+    xpToNextLevel: Int
+) {
+    val progress = if (xpForNextLevel > 0) {
+        xpIntoCurrentLevel.toFloat() / xpForNextLevel.toFloat()
+    } else {
+        0f
+    }.coerceIn(0f, 1f)
+    val todayXpColor = Color(0xFF2E7D32)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                    )
+                )
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Level progress",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Level $level",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
+                ) {
+                    Text(
+                        text = "$xpToNextLevel XP to next",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
+
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Text(
+                text = buildAnnotatedString {
+                    append("XP ")
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(totalXp.toString())
+                    }
+                    append(" + ")
+                    withStyle(
+                        style = SpanStyle(
+                            color = todayXpColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    ) {
+                        append("$todayXp today")
+                    }
+                },
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Text(
+                text = "$xpIntoCurrentLevel / $xpForNextLevel XP in this level",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

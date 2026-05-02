@@ -9,6 +9,7 @@ data class GamificationUiState(
     val longestStreak: Int = 0,
     val totalPerfectDays: Int = 0,
     val totalXp: Int = 0,
+    val todayXp: Int = 0,
     val level: Int = 1,
     val xpIntoCurrentLevel: Int = 0,
     val xpForNextLevel: Int = 100,
