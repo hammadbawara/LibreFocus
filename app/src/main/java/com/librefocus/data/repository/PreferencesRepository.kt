@@ -10,6 +10,7 @@ class PreferencesRepository(private val dataStore: PreferencesDataStore) {
     val onboardingShown: Flow<Boolean> = dataStore.onboardingShown
     val appTheme: Flow<String> = dataStore.appTheme
     val timeFormat: Flow<String> = dataStore.timeFormat
+    val dailyScreenTimeGoalMinutes: Flow<Int> = dataStore.dailyScreenTimeGoalMinutes
 
     /** Flow that emits the last open conversation id (nullable) */
     val lastConversationId: Flow<String?> = dataStore.lastConversationId
@@ -53,6 +54,10 @@ class PreferencesRepository(private val dataStore: PreferencesDataStore) {
 
     suspend fun setTimeFormat(format: String) {
         dataStore.setTimeFormat(format)
+    }
+
+    suspend fun setDailyScreenTimeGoalMinutes(minutes: Int) {
+        dataStore.setDailyScreenTimeGoalMinutes(minutes)
     }
     
     /**

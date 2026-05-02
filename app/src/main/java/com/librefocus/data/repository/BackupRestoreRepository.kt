@@ -3,11 +3,14 @@ package com.librefocus.data.repository
 import android.content.Context
 import android.net.Uri
 import com.librefocus.data.local.database.UsageDatabase
+import com.librefocus.data.local.database.dao.AchievementDao
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
 import com.librefocus.data.local.database.dao.DailyDeviceUsageDao
+import com.librefocus.data.local.database.dao.GoalHistoryDao
 import com.librefocus.data.local.database.dao.HourlyAppUsageDao
 import com.librefocus.data.local.database.dao.LimitDao
+import com.librefocus.data.local.database.dao.PerfectDayDao
 import com.librefocus.data.local.database.dao.SyncMetadataDao
 import com.librefocus.models.BackupData
 import com.librefocus.models.DatabaseBackup
@@ -30,7 +33,10 @@ class BackupRestoreRepository(
     private val hourlyAppUsageDao: HourlyAppUsageDao,
     private val dailyDeviceUsageDao: DailyDeviceUsageDao,
     private val limitDao: LimitDao,
-    private val syncMetadataDao: SyncMetadataDao
+    private val syncMetadataDao: SyncMetadataDao,
+    private val perfectDayDao: PerfectDayDao,
+    private val achievementDao: AchievementDao,
+    private val goalHistoryDao: GoalHistoryDao
 ) {
     private val json = Json {
         prettyPrint = false
@@ -51,11 +57,14 @@ class BackupRestoreRepository(
                 scheduleLimits = limitDao.getAllScheduleLimits().first(),
                 usageLimits = limitDao.getAllUsageLimits().first(),
                 launchCountLimits = limitDao.getAllLaunchCountLimits().first(),
-                syncMetadata = syncMetadataDao.getAllMetadata().first()
+                syncMetadata = syncMetadataDao.getAllMetadata().first(),
+                perfectDays = perfectDayDao.getAllPerfectDays().first(),
+                achievements = achievementDao.getAllAchievements().first(),
+                goalHistory = goalHistoryDao.getAllGoals().first()
             )
 
             val backupData = BackupData(
-                version = 1,
+                version = 2,
                 timestamp = System.currentTimeMillis(),
                 database = databaseBackup
             )
@@ -98,7 +107,7 @@ class BackupRestoreRepository(
                 val backupData = json.decodeFromString<BackupData>(jsonString)
                 
                 // Validate backup version
-                if (backupData.version != 1) {
+                if (backupData.version !in setOf(1, 2)) {
                     return@withContext Result.failure(
                         IllegalArgumentException("Unsupported backup version: ${backupData.version}")
                     )
@@ -129,6 +138,9 @@ class BackupRestoreRepository(
                     limitDao.deleteAllLaunchCountLimits()
                     limitDao.deleteAllLimits()
                     syncMetadataDao.deleteAllMetadata()
+                    perfectDayDao.deleteAllPerfectDays()
+                    achievementDao.deleteAllAchievements()
+                    goalHistoryDao.deleteAllGoals()
                     
                     // Import all data from backup
                     appCategoryDao.insertCategoriesSync(data.database.appCategories)
@@ -140,6 +152,9 @@ class BackupRestoreRepository(
                     limitDao.insertUsageLimitsSync(data.database.usageLimits)
                     limitDao.insertLaunchCountLimitsSync(data.database.launchCountLimits)
                     syncMetadataDao.insertMetadataSync(data.database.syncMetadata)
+                    perfectDayDao.upsertPerfectDaysSync(data.database.perfectDays)
+                    achievementDao.insertAchievementsSync(data.database.achievements)
+                    goalHistoryDao.insertGoalsSync(data.database.goalHistory)
                 }
 
                 Result.success(Unit)
@@ -164,6 +179,9 @@ class BackupRestoreRepository(
                 limitDao.deleteAllLaunchCountLimits()
                 limitDao.deleteAllLimits()
                 syncMetadataDao.deleteAllMetadata()
+                perfectDayDao.deleteAllPerfectDays()
+                achievementDao.deleteAllAchievements()
+                goalHistoryDao.deleteAllGoals()
             }
 
             Result.success(Unit)

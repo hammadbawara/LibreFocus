@@ -3,6 +3,7 @@ package com.librefocus.data.local
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.librefocus.models.DateFormat
@@ -21,6 +22,7 @@ class PreferencesDataStore(private val context: Context) {
     private val APP_THEME_KEY = stringPreferencesKey("app_theme")
     private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
     private val LAST_CONVERSATION_KEY = stringPreferencesKey("last_conversation_id")
+    private val DAILY_SCREEN_TIME_GOAL_MINUTES_KEY = intPreferencesKey("daily_screen_time_goal_minutes")
     // Conversation title keys are stored as: conv_title_<conversationId>
     private fun conversationTitleKey(id: String) = stringPreferencesKey("conv_title_$id")
 
@@ -43,6 +45,10 @@ class PreferencesDataStore(private val context: Context) {
 
     val timeFormat: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[TIME_FORMAT_KEY] ?: "24H"
+    }
+
+    val dailyScreenTimeGoalMinutes: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[DAILY_SCREEN_TIME_GOAL_MINUTES_KEY] ?: 120
     }
 
     /** Flow exposing last saved conversation id (nullable) */
@@ -118,6 +124,12 @@ class PreferencesDataStore(private val context: Context) {
     suspend fun setTimeFormat(format: String) {
         context.dataStore.edit { prefs ->
             prefs[TIME_FORMAT_KEY] = format
+        }
+    }
+
+    suspend fun setDailyScreenTimeGoalMinutes(minutes: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[DAILY_SCREEN_TIME_GOAL_MINUTES_KEY] = minutes.coerceAtLeast(0)
         }
     }
     

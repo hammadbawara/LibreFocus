@@ -7,6 +7,7 @@ import com.librefocus.di.categoryModule
 import com.librefocus.di.chatbotModule
 import com.librefocus.di.dataStoreModule
 import com.librefocus.di.databaseModule
+import com.librefocus.di.gamificationModule
 import com.librefocus.di.homeModule
 import com.librefocus.di.limitsModule
 import com.librefocus.di.mainModule
@@ -31,6 +32,7 @@ class LibreFocus: Application() {
                 onboardingModule,
                 dataStoreModule,
                 databaseModule,
+                gamificationModule,
                 mainModule,
                 homeModule,
                 statsModule,
