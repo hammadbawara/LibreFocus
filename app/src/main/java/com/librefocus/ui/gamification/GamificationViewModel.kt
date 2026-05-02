@@ -42,7 +42,13 @@ class GamificationViewModel(
                         currentStreak = snapshot.currentStreak,
                         longestStreak = snapshot.longestStreak,
                         totalPerfectDays = snapshot.totalPerfectDays,
+                        totalXp = snapshot.totalXp,
+                        level = snapshot.levelProgress.level,
+                        xpIntoCurrentLevel = snapshot.levelProgress.xpIntoCurrentLevel,
+                        xpForNextLevel = snapshot.levelProgress.xpForNextLevel,
+                        xpToNextLevel = snapshot.levelProgress.xpToNextLevel,
                         achievementGroups = snapshot.achievementGroups,
+                        latestAchievementAnnouncement = snapshot.latestAchievementAnnouncement,
                         isLoading = false,
                         error = null
                     )
@@ -66,7 +72,13 @@ class GamificationViewModel(
                         currentStreak = snapshot.currentStreak,
                         longestStreak = snapshot.longestStreak,
                         totalPerfectDays = snapshot.totalPerfectDays,
+                        totalXp = snapshot.totalXp,
+                        level = snapshot.levelProgress.level,
+                        xpIntoCurrentLevel = snapshot.levelProgress.xpIntoCurrentLevel,
+                        xpForNextLevel = snapshot.levelProgress.xpForNextLevel,
+                        xpToNextLevel = snapshot.levelProgress.xpToNextLevel,
                         achievementGroups = snapshot.achievementGroups,
+                        latestAchievementAnnouncement = snapshot.latestAchievementAnnouncement,
                         isLoading = false,
                         error = null
                     )
@@ -79,4 +91,12 @@ class GamificationViewModel(
                 }
         }
     }
+
+        fun acknowledgeAchievementAnnouncement() {
+            val announcement = _uiState.value.latestAchievementAnnouncement ?: return
+            viewModelScope.launch {
+                gamificationRepository.markAchievementAnnouncementSeen(announcement.achievedAtUtc)
+                _uiState.value = _uiState.value.copy(latestAchievementAnnouncement = null)
+            }
+        }
 }

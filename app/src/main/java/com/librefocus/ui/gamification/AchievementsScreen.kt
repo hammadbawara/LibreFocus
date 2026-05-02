@@ -22,18 +22,9 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AssistantPhoto
-import androidx.compose.material.icons.filled.CalendarViewWeek
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ElectricBolt
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RocketLaunch
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Work
-import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -43,6 +34,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
@@ -76,6 +68,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.librefocus.models.AchievementGroup
 import com.librefocus.models.AchievementType
+import com.librefocus.models.totalXp
+import com.librefocus.models.xpEarned
 import com.librefocus.ui.common.AppBottomNavigationBar
 import com.librefocus.ui.common.AppScaffold
 import com.librefocus.ui.common.AppTopAppBar
@@ -197,7 +191,9 @@ fun AchievementsScreen(
                     SummarySection(
                         currentStreak = uiState.currentStreak,
                         longestStreak = uiState.longestStreak,
-                        totalPerfectDays = uiState.totalPerfectDays
+                        totalPerfectDays = uiState.totalPerfectDays,
+                        totalXp = uiState.totalXp,
+                        level = uiState.level
                     )
                 }
 
@@ -258,6 +254,8 @@ fun AchievementDetailScreen(
     val selectedGroup = remember(uiState.achievementGroups, selectedType) {
         selectedType?.let { type -> uiState.achievementGroups.firstOrNull { it.type == type } }
     }
+    val selectedGroupXp = selectedGroup?.totalXp ?: 0
+    val selectedAwardXp = selectedType?.xpReward ?: 0
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let { message ->
@@ -319,6 +317,18 @@ fun AchievementDetailScreen(
             }
 
             item(span = { GridItemSpan(maxLineSpan) }) {
+                XpSummaryCard(
+                    level = uiState.level,
+                    totalXp = uiState.totalXp,
+                    achievementXp = selectedAwardXp,
+                    achievementTotalXp = selectedGroupXp,
+                    xpIntoCurrentLevel = uiState.xpIntoCurrentLevel,
+                    xpForNextLevel = uiState.xpForNextLevel,
+                    xpToNextLevel = uiState.xpToNextLevel
+                )
+            }
+
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 SectionHeader(title = "Achievement dates")
             }
 
@@ -347,7 +357,8 @@ fun AchievementDetailScreen(
                             ?: record.achievedAtUtc.toString(),
                         sourceDateLabel = formattedPreferences?.formatDate(record.sourceDateUtc)
                             ?: record.sourceDateUtc.toString(),
-                        occurrenceCount = record.occurrenceCount
+                        occurrenceCount = record.occurrenceCount,
+                        xpEarned = record.xpEarned
                     )
                 }
             }
@@ -469,7 +480,9 @@ private fun SummarySection(
     longestStreak: Int,
     totalPerfectDays: Int,
     singleMetricLabel: String? = null,
-    singleMetricValue: String? = null
+    singleMetricValue: String? = null,
+    totalXp: Int? = null,
+    level: Int? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(title = if (singleMetricLabel == null) "Summary" else singleMetricLabel)
@@ -481,6 +494,66 @@ private fun SummarySection(
                 MetricCard(label = "Longest streak", value = longestStreak.toString(), modifier = Modifier.weight(1f))
                 MetricCard(label = "Perfect days", value = totalPerfectDays.toString(), modifier = Modifier.weight(1f))
             }
+            if (totalXp != null && level != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    MetricCard(label = "Level", value = level.toString(), modifier = Modifier.weight(1f))
+                    MetricCard(label = "XP", value = totalXp.toString(), modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun XpSummaryCard(
+    level: Int,
+    totalXp: Int,
+    achievementXp: Int,
+    achievementTotalXp: Int,
+    xpIntoCurrentLevel: Int,
+    xpForNextLevel: Int,
+    xpToNextLevel: Int
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "XP and level",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Level $level • $totalXp total XP",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+            LinearProgressIndicator(
+                progress = {
+                    if (xpForNextLevel > 0) {
+                        xpIntoCurrentLevel.toFloat() / xpForNextLevel.toFloat()
+                    } else {
+                        0f
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "$xpToNextLevel XP to the next level",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "This goal gives $achievementXp XP per award and $achievementTotalXp XP total so far.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -602,7 +675,7 @@ private fun AchievementCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            MedalIcon(
+            AchievementMedalIcon(
                 achievementType = achievementType,
                 earned = earned,
                 modifier = Modifier.size(92.dp)
@@ -704,7 +777,7 @@ private fun InteractiveAchievementShowcase(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            MedalIcon(
+            AchievementMedalIcon(
                 achievementType = showcaseType,
                 earned = earned,
                 modifier = Modifier.size(180.dp)
@@ -813,7 +886,8 @@ private fun MedalIcon(
 private fun AchievementDateRow(
     achievedAtLabel: String,
     sourceDateLabel: String,
-    occurrenceCount: Int
+    occurrenceCount: Int,
+    xpEarned: Int
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -837,6 +911,11 @@ private fun AchievementDateRow(
             )
             Text(
                 text = "Times achieved: $occurrenceCount",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "XP earned: $xpEarned",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -914,77 +993,4 @@ private fun GoalDialog(
             }
         }
     )
-}
-
-private fun AchievementType.detailDescription(): String = when (this) {
-    AchievementType.PERFECT_WEEKEND -> "Stay under your goal on both Saturday and Sunday."
-    AchievementType.PERFECT_WEEKDAYS -> "Stay under your goal from Monday through Friday."
-    AchievementType.PERFECT_WEEK -> "Stay within your goal for seven perfect days in a row."
-    AchievementType.PERFECT_MONTH -> "Complete a full month without exceeding your screen time goal."
-    AchievementType.FIRST_STEP -> "Stay under your goal for 1 day for the first time."
-    AchievementType.DAILY_DISCIPLINE -> "Build a 3-day perfect streak."
-    AchievementType.UNBREAKABLE -> "Keep a 14-day perfect streak alive."
-    AchievementType.ZEN_MASTER -> "Reach a 30-day perfect streak."
-    AchievementType.PERFECT_10 -> "Reach 10 perfect days overall."
-    AchievementType.PERFECT_20 -> "Reach 20 perfect days overall."
-    AchievementType.PERFECT_30 -> "Reach 30 perfect days overall."
-    AchievementType.PERFECT_50 -> "Reach 50 perfect days overall."
-    AchievementType.PERFECT_100 -> "Reach 100 perfect days overall."
-    AchievementType.PERFECT_365 -> "Reach 365 perfect days overall."
-    AchievementType.PERFECT_1000 -> "Reach 1,000 perfect days overall."
-    AchievementType.PERFECT_2000 -> "Reach 2,000 perfect days overall."
-    AchievementType.PERFECT_3000 -> "Reach 3,000 perfect days overall."
-    AchievementType.PERFECT_5000 -> "Reach 5,000 perfect days overall."
-    AchievementType.WEEKEND_WARRIOR -> "Earn three perfect weekends in a row."
-}
-
-private fun AchievementType.awardIcon() = when (this) {
-    AchievementType.PERFECT_WEEKEND -> Icons.Filled.CalendarViewWeek
-    AchievementType.PERFECT_WEEKDAYS -> Icons.Filled.Work
-    AchievementType.PERFECT_WEEK -> Icons.Filled.EmojiEvents
-    AchievementType.PERFECT_MONTH -> Icons.Filled.WorkspacePremium
-    AchievementType.FIRST_STEP -> Icons.Filled.CheckCircle
-    AchievementType.DAILY_DISCIPLINE -> Icons.Filled.ElectricBolt
-    AchievementType.UNBREAKABLE -> Icons.Filled.LocalFireDepartment
-    AchievementType.ZEN_MASTER -> Icons.Filled.AccessTime
-    AchievementType.PERFECT_10 -> Icons.Filled.CheckCircle
-    AchievementType.PERFECT_20 -> Icons.Filled.ElectricBolt
-    AchievementType.PERFECT_30 -> Icons.Filled.LocalFireDepartment
-    AchievementType.PERFECT_50 -> Icons.Filled.Star
-    AchievementType.PERFECT_100 -> Icons.Filled.RocketLaunch
-    AchievementType.PERFECT_365 -> Icons.Filled.AccessTime
-    AchievementType.PERFECT_1000 -> Icons.Filled.AssistantPhoto
-    AchievementType.PERFECT_2000 -> Icons.Filled.EmojiEvents
-    AchievementType.PERFECT_3000 -> Icons.Filled.WorkspacePremium
-    AchievementType.PERFECT_5000 -> Icons.Filled.LocalFireDepartment
-    AchievementType.WEEKEND_WARRIOR -> Icons.Filled.EmojiEvents
-}
-
-private fun AchievementType.awardGradientColors(earned: Boolean): List<Color> = if (!earned) {
-    listOf(
-        Color(0xFF9AA0A6),
-        Color(0xFF5F6368)
-    )
-} else {
-    when (this) {
-        AchievementType.PERFECT_WEEKEND -> listOf(Color(0xFFFFB74D), Color(0xFFF57C00))
-        AchievementType.PERFECT_WEEKDAYS -> listOf(Color(0xFF4FC3F7), Color(0xFF0277BD))
-        AchievementType.PERFECT_WEEK -> listOf(Color(0xFFFFD54F), Color(0xFFFF8F00))
-        AchievementType.PERFECT_MONTH -> listOf(Color(0xFF81D4FA), Color(0xFF039BE5))
-        AchievementType.FIRST_STEP -> listOf(Color(0xFFA5D6A7), Color(0xFF2E7D32))
-        AchievementType.DAILY_DISCIPLINE -> listOf(Color(0xFF80CBC4), Color(0xFF00897B))
-        AchievementType.UNBREAKABLE -> listOf(Color(0xFFFFAB91), Color(0xFFE64A19))
-        AchievementType.ZEN_MASTER -> listOf(Color(0xFFB39DDB), Color(0xFF5E35B1))
-        AchievementType.PERFECT_10 -> listOf(Color(0xFFA5D6A7), Color(0xFF2E7D32))
-        AchievementType.PERFECT_20 -> listOf(Color(0xFFFFAB91), Color(0xFFE64A19))
-        AchievementType.PERFECT_30 -> listOf(Color(0xFFE1BEE7), Color(0xFF8E24AA))
-        AchievementType.PERFECT_50 -> listOf(Color(0xFF80CBC4), Color(0xFF00897B))
-        AchievementType.PERFECT_100 -> listOf(Color(0xFFFFCC80), Color(0xFFEF6C00))
-        AchievementType.PERFECT_365 -> listOf(Color(0xFF90CAF9), Color(0xFF1565C0))
-        AchievementType.PERFECT_1000 -> listOf(Color(0xFFF48FB1), Color(0xFFC2185B))
-        AchievementType.PERFECT_2000 -> listOf(Color(0xFFCE93D8), Color(0xFF6A1B9A))
-        AchievementType.PERFECT_3000 -> listOf(Color(0xFFAED581), Color(0xFF558B2F))
-        AchievementType.PERFECT_5000 -> listOf(Color(0xFFFFE082), Color(0xFFF9A825))
-        AchievementType.WEEKEND_WARRIOR -> listOf(Color(0xFFFFD54F), Color(0xFFFBC02D))
-    }
 }

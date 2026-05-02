@@ -12,6 +12,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -20,7 +21,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.librefocus.ui.common.AppBottomNavigationBar
 import com.librefocus.ui.common.AppScaffold
+import com.librefocus.ui.gamification.AchievementRewardDialog
+import com.librefocus.ui.gamification.GamificationViewModel
 import com.librefocus.ui.home.components.AnalyticsSection
+import com.librefocus.ui.navigation.AchievementDetailRoute
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,9 +32,17 @@ import org.koin.androidx.compose.koinViewModel
 fun HomeScreen(
     navController: NavController,
     currentRoute: String?,
-    viewModel: HomeViewModel = koinViewModel()
+    viewModel: HomeViewModel = koinViewModel(),
+    gamificationViewModel: GamificationViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val gamificationState by gamificationViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(state.lastSyncTime) {
+        if (state.lastSyncTime != null) {
+            gamificationViewModel.refresh()
+        }
+    }
 
     AppScaffold(
         topBar = { scrollBehavior->
@@ -85,5 +97,18 @@ fun HomeScreen(
             }
 
         }
+    }
+
+    gamificationState.latestAchievementAnnouncement?.let { announcement ->
+        AchievementRewardDialog(
+            announcement = announcement,
+            onDismiss = {
+                gamificationViewModel.acknowledgeAchievementAnnouncement()
+            },
+            onViewDetails = {
+                gamificationViewModel.acknowledgeAchievementAnnouncement()
+                navController.navigate(AchievementDetailRoute.createRoute(announcement.type.name))
+            }
+        )
     }
 }

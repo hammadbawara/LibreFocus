@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.librefocus.models.DateFormat
@@ -23,6 +24,7 @@ class PreferencesDataStore(private val context: Context) {
     private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
     private val LAST_CONVERSATION_KEY = stringPreferencesKey("last_conversation_id")
     private val DAILY_SCREEN_TIME_GOAL_MINUTES_KEY = intPreferencesKey("daily_screen_time_goal_minutes")
+    private val LAST_SEEN_ACHIEVEMENT_AT_UTC_KEY = longPreferencesKey("last_seen_achievement_at_utc")
     // Conversation title keys are stored as: conv_title_<conversationId>
     private fun conversationTitleKey(id: String) = stringPreferencesKey("conv_title_$id")
 
@@ -49,6 +51,10 @@ class PreferencesDataStore(private val context: Context) {
 
     val dailyScreenTimeGoalMinutes: Flow<Int> = context.dataStore.data.map { prefs ->
         prefs[DAILY_SCREEN_TIME_GOAL_MINUTES_KEY] ?: 120
+    }
+
+    val lastSeenAchievementAtUtc: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[LAST_SEEN_ACHIEVEMENT_AT_UTC_KEY] ?: 0L
     }
 
     /** Flow exposing last saved conversation id (nullable) */
@@ -130,6 +136,12 @@ class PreferencesDataStore(private val context: Context) {
     suspend fun setDailyScreenTimeGoalMinutes(minutes: Int) {
         context.dataStore.edit { prefs ->
             prefs[DAILY_SCREEN_TIME_GOAL_MINUTES_KEY] = minutes.coerceAtLeast(0)
+        }
+    }
+
+    suspend fun setLastSeenAchievementAtUtc(timestampUtc: Long) {
+        context.dataStore.edit { prefs ->
+            prefs[LAST_SEEN_ACHIEVEMENT_AT_UTC_KEY] = timestampUtc.coerceAtLeast(0L)
         }
     }
     

@@ -9,10 +9,13 @@ import com.librefocus.data.local.database.entity.AchievementEntity
 import com.librefocus.data.local.database.entity.GoalHistoryEntity
 import com.librefocus.data.local.database.entity.PerfectDayEntity
 import com.librefocus.data.local.database.entity.SyncMetadataEntity
+import com.librefocus.models.AchievementAnnouncement
 import com.librefocus.models.AchievementGroup
 import com.librefocus.models.AchievementType
 import com.librefocus.models.GamificationSnapshot
+import com.librefocus.models.calculateLevelProgress
 import com.librefocus.models.toRecord
+import com.librefocus.models.xpEarned
 import com.librefocus.utils.roundToDayStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -37,6 +40,7 @@ class GamificationRepository(
         private const val BASE_CURRENT_STREAK_KEY = "gamification_base_current_streak"
         private const val BASE_LONGEST_STREAK_KEY = "gamification_base_longest_streak"
         private const val BASE_TOTAL_PERFECT_DAYS_KEY = "gamification_base_total_perfect_days"
+        private const val LAST_SEEN_ACHIEVEMENT_AT_UTC_KEY = "gamification_last_seen_achievement_at_utc"
         private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
     }
 
@@ -88,6 +92,7 @@ class GamificationRepository(
             val baseCurrentStreak = readIntMetadata(BASE_CURRENT_STREAK_KEY)
             val baseLongestStreak = readIntMetadata(BASE_LONGEST_STREAK_KEY)
             val baseTotalPerfectDays = readIntMetadata(BASE_TOTAL_PERFECT_DAYS_KEY)
+            val lastSeenAchievementAtUtc = readLongMetadata(LAST_SEEN_ACHIEVEMENT_AT_UTC_KEY) ?: 0L
             val finalizedStartUtc = determineFinalizedStart(lastCalculatedDateUtc, goals, todayStartUtc)
             val usageByDay = loadUsageByDay(finalizedStartUtc, todayStartUtc + MILLIS_PER_DAY)
 
@@ -178,18 +183,48 @@ class GamificationRepository(
             val totalPerfectDaysSnapshot = updatedTotalPerfectDays + if (todayPerfect) 1 else 0
             val longestStreakSnapshot = maxOf(updatedLongestStreak, currentStreakSnapshot)
 
+            val achievementGroups = loadGroupedAchievements()
+            val achievementRecords = achievementGroups.flatMap { it.achievements }
+            val totalXp = achievementRecords.sumOf { it.xpEarned }
+            val levelProgress = calculateLevelProgress(totalXp)
+            val latestAnnouncement = achievementRecords
+                .filter { it.achievedAtUtc > lastSeenAchievementAtUtc }
+                .maxWithOrNull(
+                    compareBy<com.librefocus.models.AchievementRecord> { it.achievedAtUtc }
+                        .thenBy { it.xpEarned }
+                )
+                ?.let { record ->
+                    AchievementAnnouncement(
+                        type = record.type,
+                        achievedAtUtc = record.achievedAtUtc,
+                        xpEarned = record.xpEarned,
+                        level = levelProgress.level,
+                        totalXp = totalXp,
+                        xpIntoCurrentLevel = levelProgress.xpIntoCurrentLevel,
+                        xpForNextLevel = levelProgress.xpForNextLevel,
+                        xpToNextLevel = levelProgress.xpToNextLevel
+                    )
+                }
+
             Result.success(
                 GamificationSnapshot(
                     currentGoalMinutes = todayGoal.goalMinutes,
                     currentStreak = currentStreakSnapshot,
                     longestStreak = longestStreakSnapshot,
                     totalPerfectDays = totalPerfectDaysSnapshot,
-                    achievementGroups = loadGroupedAchievements()
+                    totalXp = totalXp,
+                    levelProgress = levelProgress,
+                    achievementGroups = achievementGroups,
+                    latestAchievementAnnouncement = latestAnnouncement
                 )
             )
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun markAchievementAnnouncementSeen(achievedAtUtc: Long) = withContext(Dispatchers.IO) {
+        upsertMetadata(LAST_SEEN_ACHIEVEMENT_AT_UTC_KEY, achievedAtUtc)
     }
 
     private suspend fun ensureGoalHistoryExists() {
