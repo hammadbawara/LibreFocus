@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Restore
@@ -64,6 +65,7 @@ import com.librefocus.models.DateFormat
 import com.librefocus.models.TimeFormat
 import com.librefocus.ui.common.AppBottomNavigationBar
 import com.librefocus.ui.common.AppScaffold
+import com.librefocus.ui.navigation.AchievementsRoute
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
@@ -187,6 +189,20 @@ fun SettingsScreen(
             SettingsGroup(
                 title = { Text("App Management") }
             ) {
+                SettingsMenuLink(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = null
+                        )
+                    },
+                    title = { Text("Achievements") },
+                    subtitle = { Text("View streaks and earned awards") },
+                    onClick = {
+                        navController.navigate(AchievementsRoute.ROUTE)
+                    }
+                )
+
                 SettingsMenuLink(
                     icon = {
                         Icon(

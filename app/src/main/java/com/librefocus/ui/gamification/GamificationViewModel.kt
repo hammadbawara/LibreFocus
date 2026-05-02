@@ -3,17 +3,30 @@ package com.librefocus.ui.gamification
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.librefocus.data.repository.GamificationRepository
+import com.librefocus.utils.DateTimeFormatterManager
+import com.librefocus.utils.FormattedDateTimePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class GamificationViewModel(
-    private val gamificationRepository: GamificationRepository
+    private val gamificationRepository: GamificationRepository,
+    dateTimeFormatterManager: DateTimeFormatterManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GamificationUiState(isLoading = true))
     val uiState: StateFlow<GamificationUiState> = _uiState.asStateFlow()
+
+    val formattedPreferences: StateFlow<FormattedDateTimePreferences?> =
+        dateTimeFormatterManager.formattedPreferences
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = null
+            )
 
     init {
         refresh()

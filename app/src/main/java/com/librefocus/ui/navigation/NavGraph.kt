@@ -11,9 +11,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.librefocus.data.IApiKeyProvider
 import com.librefocus.ui.categories.CategoryScreen
 import com.librefocus.ui.chatbot.ChatbotScreen
 import com.librefocus.ui.components.FloatingChatButton
+import com.librefocus.ui.gamification.AchievementDetailScreen
+import com.librefocus.ui.gamification.AchievementsScreen
 import com.librefocus.ui.home.HomeScreen
 import com.librefocus.ui.limits.CreateLimitScreen
 import com.librefocus.ui.limits.LaunchCountLimitScreen
@@ -25,7 +28,6 @@ import com.librefocus.ui.limits.UsageLimitScreen
 import com.librefocus.ui.settings.SettingsScreen
 import com.librefocus.ui.stats.AppDetailScreen
 import com.librefocus.ui.stats.StatsScreen
-import com.librefocus.data.IApiKeyProvider
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
@@ -197,6 +199,23 @@ fun NavGraph(apiKeyProvider: IApiKeyProvider) {
                             restoreState = true
                         }
                     }
+                )
+            }
+            composable(AchievementsRoute.ROUTE) {
+                AchievementsScreen(
+                    navController = navController,
+                    currentRoute = currentRoute
+                )
+            }
+            composable(
+                route = AchievementDetailRoute.ROUTE_PATTERN,
+                arguments = AchievementDetailRoute.arguments
+            ) { backStackEntry ->
+                val encodedAchievementType = backStackEntry.arguments?.getString("achievementType") ?: ""
+                val achievementType = URLDecoder.decode(encodedAchievementType, StandardCharsets.UTF_8.toString())
+                AchievementDetailScreen(
+                    achievementType = achievementType,
+                    onBackClick = { navController.navigateUp() }
                 )
             }
             composable(

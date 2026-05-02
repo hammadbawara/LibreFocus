@@ -116,3 +116,20 @@ object AppDetailRoute {
         return "app_detail/$encodedPackage/$encodedName"
     }
 }
+
+object AchievementsRoute {
+    const val ROUTE = "achievements"
+}
+
+object AchievementDetailRoute {
+    const val ROUTE_PATTERN = "achievement_detail/{achievementType}"
+
+    val arguments: List<NamedNavArgument> = listOf(
+        navArgument("achievementType") { type = NavType.StringType }
+    )
+
+    fun createRoute(achievementType: String): String {
+        val encodedType = URLEncoder.encode(achievementType, StandardCharsets.UTF_8.toString())
+        return "achievement_detail/$encodedType"
+    }
+}
