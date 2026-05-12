@@ -2,11 +2,14 @@ package com.librefocus.data.repository
 
 import android.content.Context
 import com.librefocus.data.local.database.UsageDatabase
+import com.librefocus.data.local.database.dao.AchievementDao
 import com.librefocus.data.local.database.dao.AppCategoryDao
 import com.librefocus.data.local.database.dao.AppDao
 import com.librefocus.data.local.database.dao.DailyDeviceUsageDao
+import com.librefocus.data.local.database.dao.GoalHistoryDao
 import com.librefocus.data.local.database.dao.HourlyAppUsageDao
 import com.librefocus.data.local.database.dao.LimitDao
+import com.librefocus.data.local.database.dao.PerfectDayDao
 import com.librefocus.data.local.database.dao.SyncMetadataDao
 import com.librefocus.models.BackupData
 import io.mockk.coEvery
@@ -30,7 +33,10 @@ class BackupRestoreRepositoryTest {
     private lateinit var dailyDeviceUsageDao: DailyDeviceUsageDao
     private lateinit var limitDao: LimitDao
     private lateinit var syncMetadataDao: SyncMetadataDao
-    
+    private lateinit var perfectDayDao: PerfectDayDao
+    private lateinit var achievementDao: AchievementDao
+    private lateinit var goalHistoryDao: GoalHistoryDao
+
     private lateinit var repository: BackupRestoreRepository
 
     @Before
@@ -43,10 +49,22 @@ class BackupRestoreRepositoryTest {
         dailyDeviceUsageDao = mockk()
         limitDao = mockk()
         syncMetadataDao = mockk()
+        perfectDayDao = mockk()
+        achievementDao = mockk()
+        goalHistoryDao = mockk()
 
         repository = BackupRestoreRepository(
-            context, database, appCategoryDao, appDao, hourlyAppUsageDao,
-            dailyDeviceUsageDao, limitDao, syncMetadataDao
+            context = context,
+            database = database,
+            appCategoryDao = appCategoryDao,
+            appDao = appDao,
+            hourlyAppUsageDao = hourlyAppUsageDao,
+            dailyDeviceUsageDao = dailyDeviceUsageDao,
+            limitDao = limitDao,
+            syncMetadataDao = syncMetadataDao,
+            perfectDayDao = perfectDayDao,
+            achievementDao = achievementDao,
+            goalHistoryDao = goalHistoryDao
         )
     }
 
@@ -61,12 +79,15 @@ class BackupRestoreRepositoryTest {
         coEvery { limitDao.getAllUsageLimits() } returns flowOf(emptyList())
         coEvery { limitDao.getAllLaunchCountLimits() } returns flowOf(emptyList())
         coEvery { syncMetadataDao.getAllMetadata() } returns flowOf(emptyList())
+        coEvery { perfectDayDao.getAllPerfectDays() } returns flowOf(emptyList())
+        coEvery { achievementDao.getAllAchievements() } returns flowOf(emptyList())
+        coEvery { goalHistoryDao.getAllGoals() } returns flowOf(emptyList())
 
         val result = repository.createBackup()
 
         assertTrue(result.isSuccess)
         val backup = result.getOrNull()!!
-        assertEquals(1, backup.version)
+        assertEquals(2, backup.version)
         // Data is empty but not null
         assertTrue(backup.database.appCategories.isEmpty())
         assertTrue(backup.database.apps.isEmpty())
@@ -74,8 +95,8 @@ class BackupRestoreRepositoryTest {
 
     @Test
     fun `resetAllData clears all DAOs via transaction`() = runTest {
-        every { database.runInTransaction(any<Runnable>()) } answers { 
-            (it.invocation.args[0] as Runnable).run() 
+        every { database.runInTransaction(any<Runnable>()) } answers {
+            (it.invocation.args[0] as Runnable).run()
         }
 
         coEvery { hourlyAppUsageDao.deleteAllUsage() } returns Unit
@@ -87,6 +108,9 @@ class BackupRestoreRepositoryTest {
         coEvery { limitDao.deleteAllLaunchCountLimits() } returns Unit
         coEvery { limitDao.deleteAllLimits() } returns Unit
         coEvery { syncMetadataDao.deleteAllMetadata() } returns Unit
+        coEvery { perfectDayDao.deleteAllPerfectDays() } returns Unit
+        coEvery { achievementDao.deleteAllAchievements() } returns Unit
+        coEvery { goalHistoryDao.deleteAllGoals() } returns Unit
 
         val result = repository.resetAllData()
 
@@ -95,14 +119,15 @@ class BackupRestoreRepositoryTest {
         coVerify { hourlyAppUsageDao.deleteAllUsage() }
         coVerify { appDao.deleteAllApps() }
         coVerify { limitDao.deleteAllLimits() }
+        coVerify { perfectDayDao.deleteAllPerfectDays() }
     }
 
     @Test
     fun `restoreBackup clears and restores data from backup`() = runTest {
-        every { database.runInTransaction(any<Runnable>()) } answers { 
-            (it.invocation.args[0] as Runnable).run() 
+        every { database.runInTransaction(any<Runnable>()) } answers {
+            (it.invocation.args[0] as Runnable).run()
         }
-        
+
         // Mocks for delete
         coEvery { hourlyAppUsageDao.deleteAllUsage() } returns Unit
         coEvery { appDao.deleteAllApps() } returns Unit
@@ -113,7 +138,10 @@ class BackupRestoreRepositoryTest {
         coEvery { limitDao.deleteAllLaunchCountLimits() } returns Unit
         coEvery { limitDao.deleteAllLimits() } returns Unit
         coEvery { syncMetadataDao.deleteAllMetadata() } returns Unit
-        
+        coEvery { perfectDayDao.deleteAllPerfectDays() } returns Unit
+        coEvery { achievementDao.deleteAllAchievements() } returns Unit
+        coEvery { goalHistoryDao.deleteAllGoals() } returns Unit
+
         // Mocks for insert
         coEvery { appCategoryDao.insertCategoriesSync(any()) } returns emptyList()
         coEvery { appDao.insertAppsSync(any()) } returns emptyList()
@@ -124,14 +152,18 @@ class BackupRestoreRepositoryTest {
         coEvery { limitDao.insertUsageLimitsSync(any()) } returns Unit
         coEvery { limitDao.insertLaunchCountLimitsSync(any()) } returns Unit
         coEvery { syncMetadataDao.insertMetadataSync(any()) } returns Unit
+        coEvery { perfectDayDao.upsertPerfectDaysSync(any()) } returns emptyList()
+        coEvery { achievementDao.insertAchievementsSync(any()) } returns emptyList()
+        coEvery { goalHistoryDao.insertGoalsSync(any()) } returns emptyList()
 
         val mockBackupData = mockk<BackupData>(relaxed = true)
-        
+
         val result = repository.restoreBackup(mockBackupData)
 
         assertTrue(result.isSuccess)
-        
+
         coVerify(exactly = 1) { appDao.deleteAllApps() }
         coVerify(exactly = 1) { appDao.insertAppsSync(any()) }
+        coVerify(exactly = 1) { perfectDayDao.upsertPerfectDaysSync(any()) }
     }
 }
