@@ -176,16 +176,16 @@ fun AchievementsScreen(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                AchievementHeroCard(
-                    title = "Achievement journey",
-                    subtitle = if (uiState.currentGoalMinutes > 0) {
-                        "Daily goal: ${uiState.currentGoalMinutes} min"
-                    } else {
-                        "Set a daily screen time goal to unlock achievements."
-                    }
-                )
-            }
+//            item(span = { GridItemSpan(maxLineSpan) }) {
+//                AchievementHeroCard(
+//                    title = "Achievement journey",
+//                    subtitle = if (uiState.currentGoalMinutes > 0) {
+//                        "Daily goal: ${uiState.currentGoalMinutes} min"
+//                    } else {
+//                        "Set a daily screen time goal to unlock achievements."
+//                    }
+//                )
+//            }
 
             if (uiState.currentGoalMinutes <= 0) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
