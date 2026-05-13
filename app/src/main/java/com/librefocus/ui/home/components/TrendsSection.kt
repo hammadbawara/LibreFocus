@@ -78,7 +78,7 @@ fun TrendsSection(
             }
         }
 
-        ScreenTimeTrendChart(dailyTrends)
+        //ScreenTimeTrendChart(dailyTrends)
 
         unlocksComparison?.let {
             if (it.actionableAdvice.isNotEmpty()) {
@@ -89,7 +89,7 @@ fun TrendsSection(
             }
         }
 
-        UnlocksTrendChart(dailyTrends)
+        //UnlocksTrendChart(dailyTrends)
 
         if (topAppsUsage.isNotEmpty()) {
             AppUsageDistributionCard(topAppsUsage)
