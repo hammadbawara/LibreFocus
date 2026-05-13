@@ -41,7 +41,7 @@ fun NavGraph(apiKeyProvider: IApiKeyProvider) {
     Box {
         NavHost(
             navController = navController,
-            startDestination = Screen.Stats.route
+            startDestination = Screen.Home.route
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(
