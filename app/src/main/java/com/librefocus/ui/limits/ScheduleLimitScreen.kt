@@ -44,8 +44,8 @@ import com.librefocus.ui.common.PrimaryActionButton
 import com.librefocus.utils.DateTimeFormatterManager
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
-import java.time.Instant
-import java.time.ZoneId
+import java.time.LocalTime
+import java.util.Locale
 import android.text.format.DateFormat as AndroidDateFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -150,12 +150,17 @@ fun ScheduleLimitScreen(
                                     ) {
                                         Text(
                                             text = formattedPrefs?.let {
-                                                val fromTime = Instant.ofEpochMilli(slot.fromHour * 60000L)
-                                                    .atZone(ZoneId.systemDefault())
-                                                val toTime = Instant.ofEpochMilli(slot.toHour * 60000L)
-                                                    .atZone(ZoneId.systemDefault())
+                                                val fromTime = LocalTime.of(slot.fromHour / 60, slot.fromHour % 60)
+                                                val toTime = LocalTime.of(slot.toHour / 60, slot.toHour % 60)
                                                 "${it.timeFormatter.format(fromTime)} – ${it.timeFormatter.format(toTime)}"
-                                            } ?: "${slot.fromHour / 60}:00 – ${slot.toHour / 60}:00",
+                                            } ?: String.format(
+                                                Locale.getDefault(),
+                                                "%02d:%02d – %02d:%02d",
+                                                slot.fromHour / 60,
+                                                slot.fromHour % 60,
+                                                slot.toHour / 60,
+                                                slot.toHour % 60
+                                            ),
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                         IconButton(onClick = { viewModel.removeTimeSlot(index) }) {
