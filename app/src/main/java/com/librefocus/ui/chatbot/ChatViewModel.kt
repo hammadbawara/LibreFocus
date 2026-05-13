@@ -25,6 +25,51 @@ open class ChatViewModel(
     private var model: String = "llama-3.3-70b-versatile"
 ) : ViewModel(), IChatViewModel {
 
+    // If a message is out-of-scope, we always return this exact text.
+    private val irrelevantQuestionResponse =
+        "Sorry, I can only help with digital wellbeing and LibreFocus-related questions. Please ask about focus, screen time, limits, or app features."
+
+    /**
+     * Lightweight on-device relevance check.
+     * System prompts help, but enforcing this locally guarantees we never forward clearly irrelevant prompts.
+     */
+    private fun isRelevantQuestion(text: String): Boolean {
+        val normalized = text.trim().lowercase()
+        if (normalized.isBlank()) return true
+
+        // Strong matches: app name / core concepts
+        val strongSignals = listOf(
+            "librefocus",
+            "focus",
+            "screen time",
+            "screentime",
+            "digital wellbeing",
+            "wellbeing",
+            "limit",
+            "block",
+            "blocking",
+            "distract",
+            "distraction",
+            "notification",
+            "habit",
+            "goal",
+            "streak",
+            "productivity",
+            "app usage",
+            "usage stats",
+            "settings",
+            "feature"
+        )
+
+        if (strongSignals.any { normalized.contains(it) }) return true
+
+        // If it looks like a generic short question, allow it (user may be referring to focus implicitly)
+        val looksLikeGeneralWellbeingQuestion = normalized.endsWith("?") && normalized.length <= 60
+        if (looksLikeGeneralWellbeingQuestion) return true
+
+        return false
+    }
+
     private fun clampTitle(raw: String?, maxChars: Int = 48): String? {
         val trimmed = raw?.trim()?.ifBlank { null } ?: return null
         return if (trimmed.length <= maxChars) trimmed else trimmed.take(maxChars - 3) + "..."
@@ -219,28 +264,66 @@ open class ChatViewModel(
                 val canUseAiTitles = hasApiKey()
                 val isFirstUserMessage = conversationHistory.count { it.role == "user" } == 0
 
+                // Enforce relevance BEFORE calling the LLM
+                if (!isRelevantQuestion(text)) {
+                    val refusal = irrelevantQuestionResponse
+
+                    // Keep conversation history + DB consistent
+                    conversationHistory.add(ChatMessage(role = "user", content = text))
+                    try { conversationId?.let { chatRepository.saveMessage(it, "user", text, System.currentTimeMillis()) } } catch (_: Exception) {}
+
+                    conversationHistory.add(ChatMessage(role = "assistant", content = refusal))
+                    try { conversationId?.let { chatRepository.saveMessage(it, "assistant", refusal, System.currentTimeMillis()) } } catch (_: Exception) {}
+
+                    try { refreshConversations() } catch (_: Exception) {}
+                    trimConversationHistory()
+                    _messages.value = _messages.value + Message(refusal, false, model, null)
+                    return@launch
+                }
+
                 // Get anonymized context from provider
                 val context = chatContextProvider.getBehaviorContext()
 
-                // persona/system instruction
-                val systemInstruction = "You are a privacy-first digital wellbeing assistant. Only use the anonymized context provided. Return helpful, actionable recommendations. Be concise and prefer bullet points when giving steps."
+                // Strict system prompt to keep the assistant on-topic.
+                val systemInstruction =
+                    """
+                    You are LibreFocus Assistant, a privacy-first digital wellbeing and focus coach inside the LibreFocus app.
+
+                    Allowed scope (ONLY answer these):
+                    - Focus and productivity habits
+                    - Reducing distractions, phone checking, procrastination
+                    - Screen time, app usage patterns, stats interpretation
+                    - App limits/blocking, schedules, notification hygiene
+                    - Goals, streaks, habits, gamification in LibreFocus
+                    - How to use LibreFocus features and settings
+
+                    Out-of-scope behavior:
+                    - If the user asks anything outside the allowed scope (e.g., programming, politics, general trivia, medical/legal/financial advice, entertainment), you MUST respond with exactly:
+                    "$irrelevantQuestionResponse"
+
+                    Unclear requests:
+                    - If it might be related but unclear, ask one short clarifying question instead of answering.
+
+                    Privacy:
+                    - Only use the CONTEXT provided by the app. Do not request identifying info.
+
+                    Style:
+                    - Be concise and actionable. Prefer bullet points for steps.
+                    """.trimIndent()
 
                 // Ensure system instruction and context are present at the start of the conversation history
-                if (conversationHistory.none { it.role == "system" && it.content.contains("privacy-first") }) {
+                if (conversationHistory.none { it.role == "system" && it.content.contains("LibreFocus Assistant") }) {
                     conversationHistory.add(ChatMessage(role = "system", content = systemInstruction))
                 }
 
                 // Add or update a dedicated system context message so LLM always receives up-to-date user behavioral context
-                // Replace existing 'context' system message if present
                 val contextIndex = conversationHistory.indexOfFirst { it.role == "system" && it.content.startsWith("CONTEXT:") }
                 val contextMessage = ChatMessage(role = "system", content = "CONTEXT:\n$context")
                 if (contextIndex >= 0) {
                     conversationHistory[contextIndex] = contextMessage
                 } else {
-                    // add after initial system instruction
-                    val insertPos = conversationHistory.indexOfFirst { it.role == "system" } + 1
-                    val pos = if (insertPos > 0) insertPos else 0
-                    conversationHistory.add(pos, contextMessage)
+                    val insertPos = conversationHistory.indexOfFirst { it.role == "system" }.let { if (it >= 0) it + 1 else 0 }
+                    conversationHistory.add(insertPos, contextMessage)
                 }
 
                 // Append the user message to the conversation history
